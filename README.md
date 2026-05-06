@@ -89,11 +89,13 @@ Game state lives in Ashley `Entity` instances composed of pure-data
 
 Layout:
 
-* `ecs/component/` — pure-data components (`PositionComponent`,
-  `TextureComponent`).
-* `ecs/system/` — behavior. `RenderSystem` extends `IteratingSystem`,
-  matches `Family.all(PositionComponent, TextureComponent)`, and draws
-  via the injected `SpriteBatch`.
+* `ecs/component/` — pure-data components.
+  * `PositionComponent` — `float x`, `float y`, and `int z` (render layer; lower draws first).
+  * `TextureComponent` — a `TextureRegion`, so atlas frames and stand-alone textures share one render path. Wrap a whole `Texture` with `new TextureRegion(texture)`.
+  * `AnimationComponent` — a libGDX `Animation<TextureRegion>` plus `float elapsed`.
+* `ecs/system/` — behavior.
+  * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into the entity's `TextureComponent.region` each tick.
+  * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
 
 The `Engine` itself is provided by Dagger (`GameModule.provideEngine`),
 which constructs a `PooledEngine`, takes any systems as constructor

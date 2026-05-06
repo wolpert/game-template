@@ -5,9 +5,11 @@ import com.badlogic.ashley.core.PooledEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
+import com.codeheadsystems.game.ecs.system.AnimationSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
 import dagger.Module;
 import dagger.Provides;
@@ -19,6 +21,7 @@ import javax.inject.Singleton;
 public class GameModule {
 
     private static final String GAME_CONFIG_PATH = "config/game.yaml";
+    private static final String GAME_ATLAS_PATH = "atlases/game-template.atlas";
 
     @Provides
     @Singleton
@@ -34,6 +37,12 @@ public class GameModule {
 
     @Provides
     @Singleton
+    TextureAtlas provideTextureAtlas() {
+        return new TextureAtlas(GAME_ATLAS_PATH);
+    }
+
+    @Provides
+    @Singleton
     GameConfig provideGameConfig(ConfigLoader loader) {
         try (Reader reader = Gdx.files.internal(GAME_CONFIG_PATH).reader()) {
             return loader.load(GameConfig.class, reader);
@@ -44,8 +53,9 @@ public class GameModule {
 
     @Provides
     @Singleton
-    Engine provideEngine(RenderSystem renderSystem) {
+    Engine provideEngine(AnimationSystem animationSystem, RenderSystem renderSystem) {
         Engine engine = new PooledEngine();
+        engine.addSystem(animationSystem);
         engine.addSystem(renderSystem);
         return engine;
     }

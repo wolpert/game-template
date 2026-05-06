@@ -3,23 +3,29 @@ package com.codeheadsystems.game.ecs.system;
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
-import com.badlogic.ashley.systems.IteratingSystem;
+import com.badlogic.ashley.systems.SortedIteratingSystem;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
+import java.util.Comparator;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 @Singleton
-public class RenderSystem extends IteratingSystem {
+public class RenderSystem extends SortedIteratingSystem {
+
+    static final int PRIORITY = 10;
+
+    private static final ComponentMapper<PositionComponent> POSITIONS = ComponentMapper.getFor(PositionComponent.class);
+    private static final ComponentMapper<TextureComponent> TEXTURES = ComponentMapper.getFor(TextureComponent.class);
+    private static final Comparator<Entity> BY_Z =
+            (a, b) -> Integer.compare(POSITIONS.get(a).z, POSITIONS.get(b).z);
 
     private final SpriteBatch batch;
-    private final ComponentMapper<PositionComponent> positions = ComponentMapper.getFor(PositionComponent.class);
-    private final ComponentMapper<TextureComponent> textures = ComponentMapper.getFor(TextureComponent.class);
 
     @Inject
     public RenderSystem(SpriteBatch batch) {
-        super(Family.all(PositionComponent.class, TextureComponent.class).get());
+        super(Family.all(PositionComponent.class, TextureComponent.class).get(), BY_Z, PRIORITY);
         this.batch = batch;
     }
 
@@ -32,8 +38,8 @@ public class RenderSystem extends IteratingSystem {
 
     @Override
     protected void processEntity(Entity entity, float deltaTime) {
-        PositionComponent pos = positions.get(entity);
-        TextureComponent tex = textures.get(entity);
-        batch.draw(tex.texture, pos.x, pos.y);
+        PositionComponent pos = POSITIONS.get(entity);
+        TextureComponent tex = TEXTURES.get(entity);
+        batch.draw(tex.region, pos.x, pos.y);
     }
 }

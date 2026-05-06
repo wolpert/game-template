@@ -6,8 +6,8 @@ import static org.mockito.Mockito.mock;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.PooledEngine;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
 import org.junit.jupiter.api.Test;
@@ -16,34 +16,40 @@ import org.mockito.InOrder;
 class RenderSystemTest {
 
     @Test
-    void wrapsEachUpdateInBeginEndAndDrawsMatchingEntities() {
+    void wrapsEachUpdateInBeginEndAndDrawsByAscendingZ() {
         SpriteBatch batch = mock(SpriteBatch.class);
-        Texture texture = mock(Texture.class);
+        TextureRegion bgRegion = mock(TextureRegion.class);
+        TextureRegion midRegion = mock(TextureRegion.class);
+        TextureRegion fgRegion = mock(TextureRegion.class);
 
         Engine engine = new PooledEngine();
         engine.addSystem(new RenderSystem(batch));
 
-        engine.addEntity(makeEntity(texture, 10f, 20f));
-        engine.addEntity(makeEntity(texture, 30f, 40f));
-        engine.addEntity(makeEntityWithoutTexture(50f, 60f)); // should be ignored by the family
+        // Add entities out of z-order to prove the sort, not insertion order, drives draw order.
+        engine.addEntity(makeEntity(fgRegion, 50f, 60f, /*z=*/ 2));
+        engine.addEntity(makeEntity(bgRegion, 10f, 20f, /*z=*/ 0));
+        engine.addEntity(makeEntity(midRegion, 30f, 40f, /*z=*/ 1));
+        engine.addEntity(makeEntityWithoutTexture(70f, 80f)); // ignored by family
 
         engine.update(0.016f);
 
         InOrder order = inOrder(batch);
         order.verify(batch).begin();
-        order.verify(batch).draw(texture, 10f, 20f);
-        order.verify(batch).draw(texture, 30f, 40f);
+        order.verify(batch).draw(bgRegion, 10f, 20f);
+        order.verify(batch).draw(midRegion, 30f, 40f);
+        order.verify(batch).draw(fgRegion, 50f, 60f);
         order.verify(batch).end();
         order.verifyNoMoreInteractions();
     }
 
-    private static Entity makeEntity(Texture texture, float x, float y) {
+    private static Entity makeEntity(TextureRegion region, float x, float y, int z) {
         Entity entity = new Entity();
         PositionComponent pos = new PositionComponent();
         pos.x = x;
         pos.y = y;
+        pos.z = z;
         TextureComponent tex = new TextureComponent();
-        tex.texture = texture;
+        tex.region = region;
         entity.add(pos);
         entity.add(tex);
         return entity;
