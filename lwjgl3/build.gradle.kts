@@ -14,7 +14,7 @@ buildscript {
     }
     dependencies {
         if (project.findProperty("enableGraalNative") == "true") {
-            classpath("org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:0.9.28")
+            classpath("org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:1.1.0")
         }
     }
 }
