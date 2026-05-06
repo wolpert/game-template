@@ -24,6 +24,12 @@
 -dontwarn android.support.**
 -dontwarn com.badlogic.gdx.backends.android.AndroidFragmentApplication
 
+# SnakeYAML references java.beans.* for its bean-introspection path. We use
+# BeanAccess.FIELD in ConfigLoader so that path never runs at runtime, but
+# R8 still needs to be told the missing references are intentional.
+-dontwarn java.beans.**
+-keep class com.codeheadsystems.game.config.** { *; }
+
 # Needed by the gdx-controllers official extension.
 -keep class com.badlogic.gdx.controllers.android.AndroidControllers
 

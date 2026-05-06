@@ -6,6 +6,7 @@ val aiVersion: String by project
 val daggerVersion: String by project
 val junitVersion: String by project
 val mockitoVersion: String by project
+val snakeYamlVersion: String by project
 val gdxVfxCoreVersion: String by project
 val gdxVfxEffectsVersion: String by project
 val utilsVersion: String by project
@@ -29,6 +30,8 @@ dependencies {
 
     "api"("com.google.dagger:dagger:$daggerVersion")
     "annotationProcessor"("com.google.dagger:dagger-compiler:$daggerVersion")
+
+    "api"("org.yaml:snakeyaml:$snakeYamlVersion")
 
     if (enableGraalNative == "true") {
         "implementation"("io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion")

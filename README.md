@@ -111,9 +111,41 @@ per-frame work belongs in a system, not in `TheGame`.
 
 ### YAML configuration
 
-Game configuration is loaded from YAML files under `assets/config/`.
-Add new config types by defining a POJO and binding it in the config
-loader module.
+Game configuration lives in `assets/config/` and is parsed by
+SnakeYAML. The default `assets/config/game.yaml` looks like:
+
+```yaml
+title: Game Template
+logo:
+  x: 140
+  y: 210
+```
+
+`ConfigLoader` (in `core/src/main/java/.../config/`) is a thin wrapper
+that constructs SnakeYAML with `BeanAccess.FIELD`, so config POJOs use
+plain public fields rather than getters/setters. Unknown keys fail
+loudly so typos in YAML keys surface as errors instead of silently
+producing default values.
+
+To add a new config type:
+
+1. Define a POJO under `com.codeheadsystems.game.config` with public
+   fields matching the YAML keys.
+2. Add a `@Provides @Singleton` method to `GameModule` that opens the
+   asset (`Gdx.files.internal("config/your-file.yaml").reader()`) and
+   delegates to `ConfigLoader.load(YourConfig.class, reader)`.
+3. Constructor- or field-inject the POJO wherever you need it.
+4. Cover the parsing in a `ConfigLoaderTest`-style unit test using a
+   `StringReader` — no libGDX init needed.
+
+#### Android caveat
+
+SnakeYAML's bean-introspection path references `java.beans.*`, which
+doesn't exist on Android. We sidestep that with `-dontwarn java.beans.**`
+and a `-keep` rule on `com.codeheadsystems.game.config.**` in
+`android/proguard-rules.pro` (so R8 doesn't strip the reflectively
+populated fields). If you move config POJOs to a different package,
+update that keep rule to match.
 
 ### Tests
 

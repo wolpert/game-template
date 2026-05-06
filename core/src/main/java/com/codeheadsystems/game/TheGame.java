@@ -7,6 +7,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.di.DaggerGameComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
@@ -17,6 +18,7 @@ public class TheGame extends ApplicationAdapter {
     @Inject SpriteBatch batch;
     @Inject Texture image;
     @Inject Engine engine;
+    @Inject GameConfig config;
 
     @Override
     public void create() {
@@ -25,8 +27,8 @@ public class TheGame extends ApplicationAdapter {
 
         Entity logo = new Entity();
         PositionComponent pos = new PositionComponent();
-        pos.x = 140;
-        pos.y = 210;
+        pos.x = config.logo.x;
+        pos.y = config.logo.y;
         TextureComponent tex = new TextureComponent();
         tex.texture = image;
         logo.add(pos);
