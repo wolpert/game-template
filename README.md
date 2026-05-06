@@ -85,10 +85,29 @@ under `core/build/generated/sources/annotationProcessor/`.
 ### Ashley (ECS)
 
 Game state lives in Ashley `Entity` instances composed of pure-data
-`Component`s. Behavior lives in `EntitySystem`s (movement, rendering,
-Box2D sync, input, etc.). To add a new behavior, define any new
-components, add a system that operates on the matching `Family`, and
-register the system with the `Engine` from the Dagger graph.
+`Component`s. Behavior lives in `EntitySystem`s.
+
+Layout:
+
+* `ecs/component/` — pure-data components (`PositionComponent`,
+  `TextureComponent`).
+* `ecs/system/` — behavior. `RenderSystem` extends `IteratingSystem`,
+  matches `Family.all(PositionComponent, TextureComponent)`, and draws
+  via the injected `SpriteBatch`.
+
+The `Engine` itself is provided by Dagger (`GameModule.provideEngine`),
+which constructs a `PooledEngine`, takes any systems as constructor
+parameters, and registers them. To add a new system:
+
+1. Annotate it `@Singleton` and give it an `@Inject` constructor — Dagger
+   will wire its dependencies.
+2. Add it as a parameter on `GameModule.provideEngine` and call
+   `engine.addSystem(...)` there. Order = registration order; pass
+   priorities to the system constructor if you need deterministic
+   ordering.
+
+`TheGame.render()` calls `engine.update(deltaTime)` once per frame; all
+per-frame work belongs in a system, not in `TheGame`.
 
 ### YAML configuration
 

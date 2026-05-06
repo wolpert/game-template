@@ -44,9 +44,11 @@ GraalVM native image is opt-in. Set `enableGraalNative=true` in `gradle.properti
 
 ## What you actually have vs. what the README promises
 
-The README describes an aspirational template (Dagger DI, Ashley ECS, Box2D wiring, loading/menu/preferences screens, YAML config, Aseprite import pipeline, falling-blocks sample). Most of that is **not** implemented yet — `TheGame.java` just draws `libgdx.png` on a clear color, and many deps (ashley, gdx-ai, gdx-vfx, libgdx-utils-box2d, box2dlights) are pulled into `core/build.gradle.kts` but unused.
+The README describes an aspirational template (Dagger DI, Ashley ECS, Box2D wiring, loading/menu/preferences screens, YAML config, Aseprite import pipeline, falling-blocks sample). Some of it is real now; most still isn't — Box2D wiring, screens, YAML, and the Aseprite pipeline aren't implemented, and several deps (gdx-ai, gdx-vfx, libgdx-utils-box2d, box2dlights) are pulled into `core/build.gradle.kts` but unused.
 
-**Dagger is wired up.** The graph lives under `com.codeheadsystems.game.di`: `GameModule` provides the runtime `SpriteBatch` / `Texture`, `GameComponent` exposes `inject(TheGame)`, and `TheGame.create()` builds the component (`DaggerGameComponent.create().inject(this)`) so providers run after libGDX has initialized GL. Annotation processing is configured via `annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"` in `core/build.gradle.kts`; generated sources land at `core/build/generated/sources/annotationProcessor/...`. Add new injectables by `@Provides`-binding them in `GameModule` (or a new `@Module`) and constructor-injecting the consumers.
+**Dagger is wired up.** The graph lives under `com.codeheadsystems.game.di`: `GameModule` provides the shared `SpriteBatch` / `Texture` / Ashley `Engine`, `GameComponent` exposes `inject(TheGame)`, and `TheGame.create()` builds the component (`DaggerGameComponent.create().inject(this)`) so providers run after libGDX has initialized GL. Annotation processing is configured via `annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"` in `core/build.gradle.kts`; generated sources land at `core/build/generated/sources/annotationProcessor/...`.
+
+**Ashley is wired through Dagger.** Components live under `com.codeheadsystems.game.ecs.component` (pure-data, default constructors). Systems live under `com.codeheadsystems.game.ecs.system`, are `@Singleton` with `@Inject` constructors, and get registered onto the `PooledEngine` inside `GameModule.provideEngine(...)` — adding a system means adding a constructor parameter there and calling `engine.addSystem(...)`. `TheGame.render()` is a one-liner (`engine.update(delta)`); per-frame work belongs in a system.
 
 ## Asset list generation
 
