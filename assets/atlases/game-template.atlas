@@ -1,0 +1,174 @@
+
+game-template.png
+size: 1024, 512
+format: RGBA8888
+filter: Nearest, Nearest
+repeat: none
+player1_Died
+  rotate: false
+  xy: 296, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 0
+player1_Died
+  rotate: false
+  xy: 394, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 1
+player1_Died
+  rotate: false
+  xy: 296, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 2
+player1_Died
+  rotate: false
+  xy: 394, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 3
+player1_Died
+  rotate: false
+  xy: 492, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 4
+player1_Died
+  rotate: false
+  xy: 394, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 5
+player1_Died
+  rotate: false
+  xy: 492, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 6
+player1_Died
+  rotate: false
+  xy: 590, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 7
+player1_DiedOld
+  rotate: false
+  xy: 2, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 0
+player1_DiedOld
+  rotate: false
+  xy: 2, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 1
+player1_DiedOld
+  rotate: false
+  xy: 100, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 2
+player1_DiedOld
+  rotate: false
+  xy: 2, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 3
+player1_DiedOld
+  rotate: false
+  xy: 100, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 4
+player1_DiedOld
+  rotate: false
+  xy: 198, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 5
+player1_DiedOld
+  rotate: false
+  xy: 100, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 6
+player1_DiedOld
+  rotate: false
+  xy: 198, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 7
+player1_DiedOld
+  rotate: false
+  xy: 296, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 8
+player1_DiedOld
+  rotate: false
+  xy: 198, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 9
+player1_Flying
+  rotate: false
+  xy: 492, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 0
+player1_Flying
+  rotate: false
+  xy: 590, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 1
+player1_Flying
+  rotate: false
+  xy: 590, 132
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 5
+player1_Flying
+  rotate: false
+  xy: 688, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 2
+player1_Flying
+  rotate: false
+  xy: 688, 262
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 4
+player1_Flying
+  rotate: false
+  xy: 590, 2
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 3

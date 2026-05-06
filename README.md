@@ -173,10 +173,55 @@ dependencies should reuse the existing `mockitoAgent` configuration.
 ### Aseprite import
 
 Source `.aseprite` files live in `art/` and are **not** shipped with the
-game. A Gradle task invokes the Aseprite CLI to export each file to a
-PNG sheet plus a JSON frame/tag manifest, then runs TexturePacker to
-produce atlases under `assets/atlases/`. The runtime animation system
-loads those atlases — it never reads `.aseprite` directly.
+game. A two-step Gradle pipeline turns them into a libGDX
+`TextureAtlas` under `assets/atlases/`, which is what the runtime loads.
+
+#### Configure the Aseprite binary
+
+The pipeline needs a path to the Aseprite executable. Set
+`aseprite.bin` in `local.properties` (which is gitignored):
+
+```properties
+aseprite.bin=/home/you/programs/aseprite/current
+```
+
+A leading `~` is expanded to your home directory. **Point at the
+binary itself**, not a wrapper script — wrappers that `exec` another
+process can lose the working environment when invoked by Gradle and
+silently produce no output.
+
+#### Run the pipeline
+
+```bash
+./gradlew buildAtlases       # exportAseprite -> packTextures
+./gradlew exportAseprite     # only the .aseprite -> per-frame PNG step
+./gradlew packTextures       # only the TexturePacker repack step
+```
+
+* `exportAseprite` invokes the Aseprite CLI on every `*.aseprite` in
+  `art/` with `--split-tags` and writes one PNG per tag-frame to
+  `build/aseprite-frames/`. Filename pattern:
+  `<basename>_<tag>_<tagframe>.png`.
+* `packTextures` runs libGDX's `TexturePacker` on those frames and
+  emits `assets/atlases/<appName>.atlas` plus the packed PNG(s).
+  TexturePacker treats the trailing `_<index>` as the region index, so
+  a `Walk` tag with three frames becomes regions named `<basename>_Walk`
+  with indices 0, 1, 2 — exactly what `atlas.findRegions(...)` returns.
+
+#### When to run it
+
+`buildAtlases` is **not** wired into the regular build — it only runs
+when you ask. The convention is: contributors who edit `.aseprite`
+files run it locally and commit the regenerated `assets/atlases/`
+output. CI machines never need Aseprite installed.
+
+#### Loading at runtime
+
+```java
+TextureAtlas atlas = new TextureAtlas("atlases/game-template.atlas");
+Array<TextureAtlas.AtlasRegion> walkFrames = atlas.findRegions("player1_Walk");
+Animation<TextureRegion> walk = new Animation<>(0.1f, walkFrames, Animation.PlayMode.LOOP);
+```
 
 ### Screen flow
 
