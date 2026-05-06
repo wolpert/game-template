@@ -4,6 +4,8 @@ val ashleyVersion: String by project
 val box2dlightsVersion: String by project
 val aiVersion: String by project
 val daggerVersion: String by project
+val junitVersion: String by project
+val mockitoVersion: String by project
 val gdxVfxCoreVersion: String by project
 val gdxVfxEffectsVersion: String by project
 val utilsVersion: String by project
@@ -31,6 +33,21 @@ dependencies {
     if (enableGraalNative == "true") {
         "implementation"("io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion")
     }
+
+    "testImplementation"("org.junit.jupiter:junit-jupiter:$junitVersion")
+    "testImplementation"("org.mockito:mockito-core:$mockitoVersion")
+    "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+}
+
+// Load Mockito as an explicit JVM agent so it doesn't self-attach (deprecated on JDK 21+).
+val mockitoAgent: Configuration = configurations.create("mockitoAgent")
+dependencies {
+    mockitoAgent("org.mockito:mockito-core:$mockitoVersion") { isTransitive = false }
+}
+
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
 
 tasks.named<Jar>("jar") {

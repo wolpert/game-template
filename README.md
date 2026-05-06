@@ -115,6 +115,29 @@ Game configuration is loaded from YAML files under `assets/config/`.
 Add new config types by defining a POJO and binding it in the config
 loader module.
 
+### Tests
+
+Tests live under `core/src/test/java/...`, mirroring the package they
+exercise. The runner is JUnit 5; mocking via Mockito.
+
+```bash
+./gradlew :core:test                             # run all
+./gradlew :core:test --tests "com.codeheadsystems.game.ecs.system.RenderSystemTest"
+./gradlew :core:test --tests "*RenderSystem*"    # glob match
+```
+
+`RenderSystemTest` is the canonical example: it builds a `PooledEngine`
+in-process, registers the system under test against a mocked
+`SpriteBatch`, adds entities, calls `engine.update(delta)`, and verifies
+the resulting batch interactions with Mockito's `InOrder`. Use the same
+pattern for new systems — exercise the engine, not the system class
+directly, so family matching and component mappers are also covered.
+
+Mockito is wired as an explicit `-javaagent` (configured in
+`core/build.gradle.kts`) rather than relying on its self-attach
+fallback, which is being removed from future JDKs. New mocking
+dependencies should reuse the existing `mockitoAgent` configuration.
+
 ### Aseprite import
 
 Source `.aseprite` files live in `art/` and are **not** shipped with the

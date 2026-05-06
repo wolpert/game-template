@@ -27,8 +27,9 @@ libGDX game template, Java 21, Gradle (Kotlin DSL), multi-module:
 # Full CI build (matches .github/workflows/ci.yml)
 ./gradlew build test --stacktrace
 
-# Single test (none exist yet, but the wiring is here)
-./gradlew :core:test --tests "FullyQualifiedClassName.methodName"
+# Tests (JUnit 5 + Mockito; see core/src/test/...)
+./gradlew :core:test
+./gradlew :core:test --tests "*RenderSystem*"
 
 # Desktop distributable jar (fat jar with all deps)
 ./gradlew lwjgl3:dist                 # alias for lwjgl3:jar
@@ -49,6 +50,8 @@ The README describes an aspirational template (Dagger DI, Ashley ECS, Box2D wiri
 **Dagger is wired up.** The graph lives under `com.codeheadsystems.game.di`: `GameModule` provides the shared `SpriteBatch` / `Texture` / Ashley `Engine`, `GameComponent` exposes `inject(TheGame)`, and `TheGame.create()` builds the component (`DaggerGameComponent.create().inject(this)`) so providers run after libGDX has initialized GL. Annotation processing is configured via `annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"` in `core/build.gradle.kts`; generated sources land at `core/build/generated/sources/annotationProcessor/...`.
 
 **Ashley is wired through Dagger.** Components live under `com.codeheadsystems.game.ecs.component` (pure-data, default constructors). Systems live under `com.codeheadsystems.game.ecs.system`, are `@Singleton` with `@Inject` constructors, and get registered onto the `PooledEngine` inside `GameModule.provideEngine(...)` — adding a system means adding a constructor parameter there and calling `engine.addSystem(...)`. `TheGame.render()` is a one-liner (`engine.update(delta)`); per-frame work belongs in a system.
+
+**Tests use JUnit 5 + Mockito.** `core/src/test/java/.../RenderSystemTest` is the pattern: build a `PooledEngine`, register the system with a mocked `SpriteBatch`, add entities, call `engine.update(delta)`, and verify with Mockito `InOrder`. This exercises family matching and component mappers in addition to the system code, so prefer it over invoking system methods directly. Mockito is loaded as an explicit `-javaagent` via the `mockitoAgent` configuration to avoid the deprecated self-attach path on JDK 21+ — reuse that configuration when adding mocking deps.
 
 ## Asset list generation
 
