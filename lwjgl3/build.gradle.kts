@@ -1,0 +1,200 @@
+import io.github.fourlastor.construo.Target
+import java.util.Locale
+
+val appName: String by extra
+val projectVersion: String by project
+val gdxVersion: String by project
+val lwjgl3Version: String by project
+val graalHelperVersion: String by project
+val enableGraalNative: String by project
+
+buildscript {
+    repositories {
+        gradlePluginPortal()
+    }
+    dependencies {
+        if (project.findProperty("enableGraalNative") == "true") {
+            classpath("org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:0.9.28")
+        }
+    }
+}
+
+plugins {
+    application
+    id("io.github.fourlastor.construo") version "2.1.0"
+}
+
+sourceSets["main"].resources.srcDir(rootProject.file("assets"))
+
+application {
+    mainClass.set("com.codeheadsystems.game.lwjgl3.Lwjgl3Launcher")
+    applicationName = appName
+}
+
+eclipse.project.name = "$appName-lwjgl3"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+if (JavaVersion.current().isJava9Compatible) {
+    tasks.named<JavaCompile>("compileJava") { options.release.set(21) }
+}
+
+dependencies {
+    implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion")
+    implementation("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop")
+    implementation("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop")
+    implementation("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    implementation(project(":core"))
+
+    if (enableGraalNative == "true") {
+        implementation("io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion")
+        implementation("io.github.berstanio:gdx-svmhelper-extension-box2d:$graalHelperVersion")
+        implementation("io.github.berstanio:gdx-svmhelper-extension-freetype:$graalHelperVersion")
+    }
+
+    // Forces LWJGL3 to use at least $lwjgl3Version, currently 3.4.1, to avoid problems on Java 25 and up.
+    constraints {
+        implementation("org.lwjgl:lwjgl:$lwjgl3Version")
+        implementation("org.lwjgl:lwjgl-glfw:$lwjgl3Version")
+        implementation("org.lwjgl:lwjgl-jemalloc:$lwjgl3Version")
+        implementation("org.lwjgl:lwjgl-openal:$lwjgl3Version")
+        implementation("org.lwjgl:lwjgl-opengl:$lwjgl3Version")
+        implementation("org.lwjgl:lwjgl-stb:$lwjgl3Version")
+    }
+}
+
+val os = System.getProperty("os.name").lowercase(Locale.ROOT)
+
+tasks.named<JavaExec>("run") {
+    workingDir = rootProject.file("assets")
+    // You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
+    // isIgnoreExitValue = true
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    if (os.contains("mac")) jvmArgs("-XstartOnFirstThread")
+}
+
+tasks.named<Jar>("jar") {
+    archiveFileName.set("$appName-$projectVersion.jar")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    dependsOn(configurations.runtimeClasspath)
+    from({ configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) } })
+    exclude(
+        "META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA",
+        "META-INF/maven/**"
+    )
+    manifest {
+        attributes(
+            mapOf(
+                "Main-Class" to application.mainClass.get(),
+                "Enable-Native-Access" to "ALL-UNNAMED",
+                "Multi-Release" to "true"
+            )
+        )
+    }
+    doLast {
+        archiveFile.get().asFile.setExecutable(true, false)
+    }
+}
+
+// Builds a JAR that only includes the files needed to run on macOS.
+tasks.register("jarMac") {
+    dependsOn("jar")
+    group = "build"
+    val jar = tasks.getByName<Jar>("jar")
+    jar.archiveFileName.set("$appName-$projectVersion-mac.jar")
+    jar.exclude(
+        "windows/x86/**", "windows/x64/**", "linux/arm32/**", "linux/arm64/**", "linux/x64/**",
+        "**/*.dll", "**/*.so",
+        "META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/maven/**"
+    )
+}
+
+// Builds a JAR that only includes the files needed to run on Linux.
+tasks.register("jarLinux") {
+    dependsOn("jar")
+    group = "build"
+    val jar = tasks.getByName<Jar>("jar")
+    jar.archiveFileName.set("$appName-$projectVersion-linux.jar")
+    jar.exclude(
+        "windows/x86/**", "windows/x64/**", "macos/arm64/**", "macos/x64/**",
+        "**/*.dll", "**/*.dylib",
+        "META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/maven/**"
+    )
+}
+
+// Builds a JAR that only includes the files needed to run on Windows.
+tasks.register("jarWin") {
+    dependsOn("jar")
+    group = "build"
+    val jar = tasks.getByName<Jar>("jar")
+    jar.archiveFileName.set("$appName-$projectVersion-win.jar")
+    jar.exclude(
+        "macos/arm64/**", "macos/x64/**", "linux/arm32/**", "linux/arm64/**", "linux/x64/**",
+        "**/*.dylib", "**/*.so",
+        "META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/maven/**"
+    )
+}
+
+construo {
+    name.set(appName)
+    humanName.set(appName)
+    jlink {
+        guessModulesFromJar.set(false)
+        modules.addAll("java.base", "java.management", "java.desktop", "jdk.unsupported")
+    }
+
+    targets.register("linuxX64", Target.Linux::class.java).configure {
+        architecture.set(Target.Architecture.X86_64)
+        jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.10_7.tar.gz")
+    }
+    targets.register("macM1", Target.MacOs::class.java).configure {
+        architecture.set(Target.Architecture.AARCH64)
+        jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.10_7.tar.gz")
+        identifier.set("com.codeheadsystems.game.$appName")
+        macIcon.set(project.file("icons/logo.icns"))
+    }
+    targets.register("macX64", Target.MacOs::class.java).configure {
+        architecture.set(Target.Architecture.X86_64)
+        jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_mac_hotspot_21.0.10_7.tar.gz")
+        identifier.set("com.codeheadsystems.game.$appName")
+        macIcon.set(project.file("icons/logo.icns"))
+    }
+    targets.register("winX64", Target.Windows::class.java).configure {
+        architecture.set(Target.Architecture.X86_64)
+        icon.set(project.file("icons/logo.png"))
+        jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_windows_hotspot_21.0.10_7.zip")
+        // Uncomment the next line to show a console when the game runs, to print messages.
+        // useConsole.set(true)
+    }
+}
+
+// Equivalent to the jar task; here for compatibility with gdx-setup.
+tasks.register("dist") {
+    dependsOn("jar")
+}
+
+distributions {
+    named("main") {
+        contents {
+            into("libs") {
+                val jarOutput = tasks.named<Jar>("jar").get().outputs.files.singleFile.name
+                project.configurations["runtimeClasspath"].files
+                    .filter { it.name != jarOutput }
+                    .forEach { exclude(it.name) }
+            }
+        }
+    }
+}
+
+tasks.named("startScripts") {
+    dependsOn(":lwjgl3:jar")
+}
+tasks.named<CreateStartScripts>("startScripts") {
+    classpath = tasks.named<Jar>("jar").get().outputs.files
+}
+
+if (enableGraalNative == "true") {
+    apply(from = "nativeimage.gradle.kts")
+}
