@@ -9,6 +9,13 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily" # Check for updates every day
+    ignore:
+      # Pin AGP to the 8.x line. AGP 9.x is alpha and IntelliJ IDEA only
+      # supports up to 9.0.0-alpha06 — bumping past that breaks IDE sync.
+      # Revisit when AGP 9.x ships stable and IDEA catches up.
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types:
+          - "version-update:semver-major"
     groups:
       # Specify a name for the group, which will be used in pull request titles
       # and branch names

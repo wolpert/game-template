@@ -7,7 +7,7 @@ buildscript {
         maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:9.2.1")
+        classpath("com.android.tools.build:gradle:8.7.3")
     }
 }
 

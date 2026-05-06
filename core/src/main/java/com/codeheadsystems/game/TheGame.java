@@ -4,16 +4,18 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.codeheadsystems.game.di.DaggerGameComponent;
+import javax.inject.Inject;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class TheGame extends ApplicationAdapter {
-    private SpriteBatch batch;
-    private Texture image;
+    @Inject SpriteBatch batch;
+    @Inject Texture image;
 
     @Override
     public void create() {
-        batch = new SpriteBatch();
-        image = new Texture("libgdx.png");
+        // Build the Dagger graph here — providers may touch GL/Gdx, which is only valid after create().
+        DaggerGameComponent.create().inject(this);
     }
 
     @Override

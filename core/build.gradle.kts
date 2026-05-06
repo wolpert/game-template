@@ -3,6 +3,7 @@ val gdxVersion: String by project
 val ashleyVersion: String by project
 val box2dlightsVersion: String by project
 val aiVersion: String by project
+val daggerVersion: String by project
 val gdxVfxCoreVersion: String by project
 val gdxVfxEffectsVersion: String by project
 val utilsVersion: String by project
@@ -23,6 +24,9 @@ dependencies {
     "api"("com.crashinvaders.vfx:gdx-vfx-effects:$gdxVfxEffectsVersion")
     "api"("com.github.tommyettinger:libgdx-utils-box2d:$utilsBox2dVersion")
     "api"("com.github.tommyettinger:libgdx-utils:$utilsVersion")
+
+    "api"("com.google.dagger:dagger:$daggerVersion")
+    "annotationProcessor"("com.google.dagger:dagger-compiler:$daggerVersion")
 
     if (enableGraalNative == "true") {
         "implementation"("io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion")
