@@ -14,8 +14,10 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.di.DaggerGameComponent;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
+import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
+import com.codeheadsystems.game.ecs.component.VelocityComponent;
 import javax.inject.Inject;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
@@ -90,6 +92,8 @@ public class TheGame extends ApplicationAdapter {
         entity.add(pos);
         entity.add(tex);
         entity.add(anim);
+        entity.add(new VelocityComponent());
+        entity.add(new InputComponent());
         return entity;
     }
 }

@@ -93,9 +93,17 @@ Layout:
   * `PositionComponent` — `float x`, `float y`, and `int z` (render layer; lower draws first).
   * `TextureComponent` — a `TextureRegion`, so atlas frames and stand-alone textures share one render path. Wrap a whole `Texture` with `new TextureRegion(texture)`.
   * `AnimationComponent` — a libGDX `Animation<TextureRegion>` plus `float elapsed`.
-* `ecs/system/` — behavior.
-  * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into the entity's `TextureComponent.region` each tick.
+  * `VelocityComponent` — `float dx`, `float dy` (pixels/second).
+  * `InputComponent` — marker; tagged entities read pointer input each tick.
+* `ecs/system/` — behavior, ordered by priority (lower runs earlier).
+  * `InputSystem` (priority -10) drives input-controlled entities toward the pointer at constant speed and stops them at the pointer or the screen edge — whichever comes first. Each tick: it clamps `pos.x` to `[0, screenW − spriteW]` (defending against off-screen spawns and window-resize-shrink), then if the pointer is down, computes a clamped target-x centered on the cursor and either sets `vel.dx = ±speed` or, when within one tick of arrival, calibrates `vel.dx = (target − pos.x) / dt` so `MovementSystem` lands exactly on the target with no overshoot. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
+  * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components.
+  * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`.
   * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
+
+`Gdx.input` and `Gdx.graphics` are bound through Dagger (`provideInput`,
+`provideGraphics`), so systems take them via constructor injection and
+tests can substitute mocks — see `InputSystemTest` for the pattern.
 
 The `Engine` itself is provided by Dagger (`GameModule.provideEngine`),
 which constructs a `PooledEngine`, takes any systems as constructor
