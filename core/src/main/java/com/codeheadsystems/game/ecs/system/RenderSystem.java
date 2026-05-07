@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.systems.SortedIteratingSystem;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
 import java.util.Comparator;
@@ -39,7 +40,10 @@ public class RenderSystem extends SortedIteratingSystem {
     @Override
     protected void processEntity(Entity entity, float deltaTime) {
         PositionComponent pos = POSITIONS.get(entity);
-        TextureComponent tex = TEXTURES.get(entity);
-        batch.draw(tex.region, pos.x, pos.y);
+        TextureRegion region = TEXTURES.get(entity).region;
+        float w = region.getRegionWidth();
+        float h = region.getRegionHeight();
+        // Rotate around the sprite's center (origin in libGDX's draw is relative to (x, y)).
+        batch.draw(region, pos.x, pos.y, w / 2f, h / 2f, w, h, 1f, 1f, pos.angle);
     }
 }

@@ -34,6 +34,10 @@ public class TheGame extends ApplicationAdapter {
     private static final float PLAYER_FRAME_DURATION = 0.1f;
     private static final float BLOCK_FRAME_DURATION = 0.12f;
     private static final float PLAYER_BOTTOM_MARGIN = 0.05f;
+    // Visible content of the player1_Flying sprite — there's transparent padding on each side.
+    // Derive new values via: identify -format "%[bounding-box]" build/aseprite-frames/<frame>.png
+    private static final int PLAYER_BODY_WIDTH = 64;
+    private static final int PLAYER_BODY_HEIGHT = 116;
 
     @Inject SpriteBatch batch;
     @Inject Texture image;
@@ -103,7 +107,8 @@ public class TheGame extends ApplicationAdapter {
         Body body = world.createBody(def);
 
         PolygonShape shape = new PolygonShape();
-        shape.setAsBox((spriteW / 2f) / ppm, (spriteH / 2f) / ppm);
+        // Body matches the visible character, not the full padded frame.
+        shape.setAsBox((PLAYER_BODY_WIDTH / 2f) / ppm, (PLAYER_BODY_HEIGHT / 2f) / ppm);
         body.createFixture(shape, 0f);
         shape.dispose();
 

@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.systems.IteratingSystem;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.World;
@@ -65,5 +66,6 @@ public class PhysicsSystem extends IteratingSystem {
         float halfH = (tex != null && tex.region != null) ? tex.region.getRegionHeight() / 2f : 0f;
         pos.x = bp.x * pixelsPerMeter - halfW;
         pos.y = bp.y * pixelsPerMeter - halfH;
+        pos.angle = body.getAngle() * MathUtils.radiansToDegrees;
     }
 }

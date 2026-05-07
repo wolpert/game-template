@@ -7,4 +7,6 @@ public class PositionComponent implements Component {
     public float y;
     /** Render layer; lower values draw first (further back). */
     public int z;
+    /** Rotation in degrees, applied around the texture's center by RenderSystem. */
+    public float angle;
 }

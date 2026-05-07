@@ -99,10 +99,11 @@ class PhysicsSystemTest {
     }
 
     @Test
-    void syncsBodyCenterToTextureBottomLeftInPixels() {
+    void syncsBodyCenterAndAngleToPositionComponent() {
         BodyDef def = new BodyDef();
         def.type = BodyDef.BodyType.KinematicBody;
         def.position.set(2f, 3f);
+        def.angle = (float) Math.toRadians(90.0); // body rotated 90deg
         Body body = world.createBody(def);
 
         BodyComponent bc = new BodyComponent();
@@ -125,6 +126,8 @@ class PhysicsSystemTest {
         // body center at (2m, 3m) * 32 ppm = (64px, 96px); minus half-extents (16, 32) -> (48, 64).
         assertEquals(48f, pos.x, 1e-4);
         assertEquals(64f, pos.y, 1e-4);
+        // 90 radians-rotated body should surface as 90 degrees in the position component.
+        assertEquals(90f, pos.angle, 1e-3);
     }
 
     private Body bodyWithVelocity(float x, float y, float vx, float vy) {
