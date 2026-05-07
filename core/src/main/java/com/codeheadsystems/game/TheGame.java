@@ -24,7 +24,6 @@ import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
-import com.codeheadsystems.game.ecs.component.VelocityComponent;
 import javax.inject.Inject;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
@@ -87,25 +86,42 @@ public class TheGame extends ApplicationAdapter {
             throw new IllegalStateException("Atlas is missing region: " + PLAYER_FLYING);
         }
         TextureRegion firstFrame = frames.first();
+        int spriteW = firstFrame.getRegionWidth();
+        int spriteH = firstFrame.getRegionHeight();
 
+        float ppm = config.physics.pixelsPerMeter;
         float screenW = Gdx.graphics.getWidth();
         float screenH = Gdx.graphics.getHeight();
-        float x = (screenW - firstFrame.getRegionWidth()) / 2f;
-        float y = screenH * PLAYER_BOTTOM_MARGIN;
+        float xPx = (screenW - spriteW) / 2f;
+        float yPx = screenH * PLAYER_BOTTOM_MARGIN;
+
+        // Kinematic so input drives linear velocity directly; collisions push dynamic bodies
+        // (e.g. the falling block) but the player itself is not pushed back.
+        BodyDef def = new BodyDef();
+        def.type = BodyDef.BodyType.KinematicBody;
+        def.position.set((xPx + spriteW / 2f) / ppm, (yPx + spriteH / 2f) / ppm);
+        Body body = world.createBody(def);
+
+        PolygonShape shape = new PolygonShape();
+        shape.setAsBox((spriteW / 2f) / ppm, (spriteH / 2f) / ppm);
+        body.createFixture(shape, 0f);
+        shape.dispose();
 
         Entity entity = new Entity();
         PositionComponent pos = new PositionComponent();
-        pos.x = x;
-        pos.y = y;
+        pos.x = xPx;
+        pos.y = yPx;
         pos.z = 1;
         TextureComponent tex = new TextureComponent();
         tex.region = firstFrame;
         AnimationComponent anim = new AnimationComponent();
         anim.animation = new Animation<>(PLAYER_FRAME_DURATION, frames, Animation.PlayMode.LOOP);
+        BodyComponent bc = new BodyComponent();
+        bc.body = body;
         entity.add(pos);
         entity.add(tex);
         entity.add(anim);
-        entity.add(new VelocityComponent());
+        entity.add(bc);
         entity.add(new InputComponent());
         return entity;
     }

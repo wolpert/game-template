@@ -97,9 +97,9 @@ Layout:
   * `InputComponent` — marker; tagged entities read pointer input each tick.
   * `BodyComponent` — wraps a Box2D `Body`. `PhysicsSystem` writes the body's center back to `PositionComponent` (in pixels, as the texture's bottom-left) each tick.
 * `ecs/system/` — behavior, ordered by priority (lower runs earlier).
-  * `InputSystem` (priority -10) drives input-controlled entities toward the pointer at constant speed and stops them at the pointer or the screen edge — whichever comes first. Each tick: it clamps `pos.x` to `[0, screenW − spriteW]` (defending against off-screen spawns and window-resize-shrink), then if the pointer is down, computes a clamped target-x centered on the cursor and either sets `vel.dx = ±speed` or, when within one tick of arrival, calibrates `vel.dx = (target − pos.x) / dt` so `MovementSystem` lands exactly on the target with no overshoot. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
+  * `InputSystem` (priority -10) drives input-controlled **physics bodies** toward the pointer at constant speed and stops them at the pointer or the screen edge. Family is `Input + Body + Position + Texture`; each tick it clamps `pos.x` to `[0, screenW − spriteW]` (correcting via `body.setTransform(...)` if needed), then either sets `body.setLinearVelocity(±speed/ppm, 0)` or, when within one frame's max travel of the target, snaps the body with `setTransform` and zeros velocity. The snap path uses `setTransform` rather than calibrated velocity because Box2D's fixed timestep can't be aligned with the frame's `dt` — for a kinematic body, teleporting cleanly is the right tool. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
   * `PhysicsSystem` (priority -8) accumulates frame deltas (capped at 0.25s) and runs Box2D `world.step(1/60s, 6, 2)` as many times as fit, then writes each body's center back to `PositionComponent` in pixels (subtracting the texture's half-extents so the result is bottom-left-anchored, the form `RenderSystem` expects).
-  * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components.
+  * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components. The current demo doesn't use it (the player uses Box2D for motion), but it's kept as the canonical pattern for non-physical entities.
   * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`.
   * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
 
@@ -112,10 +112,16 @@ tests can substitute mocks — see `InputSystemTest` for the pattern.
 The Box2D `World` is provided by Dagger (`GameModule.provideWorld`) and
 created with gravity from `config.physics.gravity`. `Box2D.init()` is
 called inside the provider so native loading is explicit. `TheGame`
-creates a static `EdgeShape` ground at `y=0` spanning the screen and a
-dynamic `PolygonShape` block above it (with restitution, so it bounces
-on landing) — that block exists purely to prove the integration is
-live.
+populates the world with three bodies:
+
+* A static `EdgeShape` **ground** at `y = 0` spanning the screen.
+* A dynamic `PolygonShape` **falling block** (the animated
+  `block_block` atlas region, with restitution `0.5` so it visibly
+  bounces).
+* A kinematic `PolygonShape` **player** sized to the
+  `player1_Flying` sprite. Kinematic means `InputSystem` drives it via
+  `setLinearVelocity`/`setTransform`; the player pushes the block on
+  contact but isn't pushed back by it.
 
 Pixel ↔ meter conversion is centralized: every body is built using
 `config.physics.pixelsPerMeter`, and `PhysicsSystem` does the inverse

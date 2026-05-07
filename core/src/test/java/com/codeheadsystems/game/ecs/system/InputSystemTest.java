@@ -10,11 +10,20 @@ import com.badlogic.ashley.core.PooledEngine;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.Box2D;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
+import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.codeheadsystems.game.config.GameConfig;
+import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
-import com.codeheadsystems.game.ecs.component.VelocityComponent;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,119 +31,149 @@ class InputSystemTest {
 
     private static final int SCREEN_WIDTH = 800;
     private static final int SPRITE_WIDTH = 96;
+    private static final int SPRITE_HEIGHT = 128;
     private static final int MAX_X = SCREEN_WIDTH - SPRITE_WIDTH; // 704
     private static final float SPEED = 200f;
+    private static final float PPM = 32f;
+    private static final float SPEED_MPS = SPEED / PPM;
     private static final float DT = 0.016f;
 
     private Input input;
-    private Graphics graphics;
     private GameConfig config;
+    private World world;
+    private Body body;
     private PositionComponent position;
-    private VelocityComponent velocity;
     private Engine engine;
+
+    @BeforeAll
+    static void loadNatives() {
+        GdxNativesLoader.load();
+        Box2D.init();
+    }
 
     @BeforeEach
     void setUp() {
         input = mock(Input.class);
-        graphics = mock(Graphics.class);
+        Graphics graphics = mock(Graphics.class);
         when(graphics.getWidth()).thenReturn(SCREEN_WIDTH);
 
         config = new GameConfig();
         config.player = new GameConfig.PlayerConfig();
         config.player.speed = SPEED;
+        config.physics = new GameConfig.PhysicsConfig();
+        config.physics.pixelsPerMeter = PPM;
+
+        world = new World(new Vector2(0f, 0f), true);
+
+        BodyDef def = new BodyDef();
+        def.type = BodyDef.BodyType.KinematicBody;
+        body = world.createBody(def);
+        PolygonShape shape = new PolygonShape();
+        shape.setAsBox((SPRITE_WIDTH / 2f) / PPM, (SPRITE_HEIGHT / 2f) / PPM);
+        body.createFixture(shape, 0f);
+        shape.dispose();
 
         position = new PositionComponent();
-        velocity = new VelocityComponent();
-        TextureComponent texture = new TextureComponent();
         TextureRegion region = mock(TextureRegion.class);
         when(region.getRegionWidth()).thenReturn(SPRITE_WIDTH);
+        when(region.getRegionHeight()).thenReturn(SPRITE_HEIGHT);
+        TextureComponent texture = new TextureComponent();
         texture.region = region;
+        BodyComponent bc = new BodyComponent();
+        bc.body = body;
 
         Entity player = new Entity();
         player.add(new InputComponent());
         player.add(position);
-        player.add(velocity);
         player.add(texture);
+        player.add(bc);
 
         engine = new PooledEngine();
         engine.addSystem(new InputSystem(input, graphics, config));
         engine.addEntity(player);
     }
 
+    @AfterEach
+    void tearDown() {
+        world.dispose();
+    }
+
     @Test
     void movesLeftWhenPointerIsLeftOfSprite() {
-        position.x = 400f;
+        placePlayerAt(400f);
         when(input.isTouched()).thenReturn(true);
         when(input.getX()).thenReturn(100);
 
         engine.update(DT);
 
-        assertEquals(-SPEED, velocity.dx);
+        assertEquals(-SPEED_MPS, body.getLinearVelocity().x, 1e-4);
     }
 
     @Test
     void movesRightWhenPointerIsRightOfSprite() {
-        position.x = 100f;
+        placePlayerAt(100f);
         when(input.isTouched()).thenReturn(true);
         when(input.getX()).thenReturn(600);
 
         engine.update(DT);
 
-        assertEquals(SPEED, velocity.dx);
+        assertEquals(SPEED_MPS, body.getLinearVelocity().x, 1e-4);
     }
 
     @Test
-    void stopsWhenAlreadyCenteredOnPointer() {
-        // Sprite center = position.x + SPRITE_WIDTH/2 = 100 + 48 = 148. Touching there means dx == 0.
-        position.x = 100f;
+    void stopsAndSnapsWhenAlreadyCenteredOnPointer() {
+        // Sprite center = 100 + 48 = 148. Touching there means dx == 0 → snap path.
+        placePlayerAt(100f);
         when(input.isTouched()).thenReturn(true);
         when(input.getX()).thenReturn(148);
 
         engine.update(DT);
 
-        assertEquals(0f, velocity.dx);
+        assertEquals(0f, body.getLinearVelocity().x, 1e-4);
+        assertEquals(148f / PPM, body.getPosition().x, 1e-4);
     }
 
     @Test
-    void calibratesFinalTickSoSpriteLandsOnTargetWithoutOvershoot() {
+    void snapsToTargetWithinOneTickOfArrival() {
         // 1 px from the centered target; max step at SPEED*DT = 3.2 px, so we're inside the snap window.
-        // Velocity must be calibrated so MovementSystem (next priority) lands exactly on target.
-        position.x = 100f;
+        // Body must be teleported exactly to the target (not approximated through Box2D's stepper).
+        placePlayerAt(100f);
         when(input.isTouched()).thenReturn(true);
         when(input.getX()).thenReturn(149);
 
         engine.update(DT);
 
-        // MovementSystem will do pos.x += velocity.dx * DT; verify the result would be exactly 101.
-        float projected = position.x + velocity.dx * DT;
-        assertEquals(101f, projected, 1e-4);
+        assertEquals(0f, body.getLinearVelocity().x, 1e-4);
+        assertEquals(149f / PPM, body.getPosition().x, 1e-4); // sprite center exactly under cursor
     }
 
     @Test
     void noTouchClearsVelocity() {
-        velocity.dx = SPEED; // simulate mid-motion
+        body.setLinearVelocity(SPEED_MPS, 0f); // simulate mid-motion
         when(input.isTouched()).thenReturn(false);
 
         engine.update(DT);
 
-        assertEquals(0f, velocity.dx);
+        assertEquals(0f, body.getLinearVelocity().x, 1e-4);
     }
 
     @Test
-    void clampsPositionWhenSpawnedOutOfBounds() {
-        position.x = -50f; // off-screen left
+    void clampsPositionWhenSpawnedOutOfBoundsLeft() {
+        placePlayerAt(-50f);
         when(input.isTouched()).thenReturn(false);
 
         engine.update(DT);
 
-        assertEquals(0f, position.x);
+        assertEquals(0f, position.x, 1e-4);
+        // body center should be at (0 + 48) / PPM = 48 / PPM
+        assertEquals(48f / PPM, body.getPosition().x, 1e-4);
     }
 
     @Test
     void doesNotOvershootRightEdgeEvenWhenPointerIsBeyondScreen() {
-        // Integration with MovementSystem — tick until convergence; the sprite must stop exactly at maxX.
-        engine.addSystem(new MovementSystem());
-        position.x = 700f;
+        // Integration with PhysicsSystem — tick until convergence; the sprite must stop exactly at maxX.
+        engine.addSystem(new PhysicsSystem(world, config));
+        placePlayerAt(700f);
         when(input.isTouched()).thenReturn(true);
         when(input.getX()).thenReturn(2000); // far past the right edge
 
@@ -143,6 +182,11 @@ class InputSystemTest {
         }
 
         assertEquals(MAX_X, position.x, 1e-3);
-        assertEquals(0f, velocity.dx, 1e-3);
+        assertEquals(0f, body.getLinearVelocity().x, 1e-3);
+    }
+
+    private void placePlayerAt(float xPx) {
+        position.x = xPx;
+        body.setTransform((xPx + SPRITE_WIDTH / 2f) / PPM, body.getPosition().y, 0f);
     }
 }
