@@ -95,8 +95,10 @@ Layout:
   * `AnimationComponent` — a libGDX `Animation<TextureRegion>` plus `float elapsed`.
   * `VelocityComponent` — `float dx`, `float dy` (pixels/second).
   * `InputComponent` — marker; tagged entities read pointer input each tick.
+  * `BodyComponent` — wraps a Box2D `Body`. `PhysicsSystem` writes the body's center back to `PositionComponent` (in pixels, as the texture's bottom-left) each tick.
 * `ecs/system/` — behavior, ordered by priority (lower runs earlier).
   * `InputSystem` (priority -10) drives input-controlled entities toward the pointer at constant speed and stops them at the pointer or the screen edge — whichever comes first. Each tick: it clamps `pos.x` to `[0, screenW − spriteW]` (defending against off-screen spawns and window-resize-shrink), then if the pointer is down, computes a clamped target-x centered on the cursor and either sets `vel.dx = ±speed` or, when within one tick of arrival, calibrates `vel.dx = (target − pos.x) / dt` so `MovementSystem` lands exactly on the target with no overshoot. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
+  * `PhysicsSystem` (priority -8) accumulates frame deltas (capped at 0.25s) and runs Box2D `world.step(1/60s, 6, 2)` as many times as fit, then writes each body's center back to `PositionComponent` in pixels (subtracting the texture's half-extents so the result is bottom-left-anchored, the form `RenderSystem` expects).
   * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components.
   * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`.
   * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
@@ -104,6 +106,38 @@ Layout:
 `Gdx.input` and `Gdx.graphics` are bound through Dagger (`provideInput`,
 `provideGraphics`), so systems take them via constructor injection and
 tests can substitute mocks — see `InputSystemTest` for the pattern.
+
+#### Box2D
+
+The Box2D `World` is provided by Dagger (`GameModule.provideWorld`) and
+created with gravity from `config.physics.gravity`. `Box2D.init()` is
+called inside the provider so native loading is explicit. `TheGame`
+creates a static `EdgeShape` ground at `y=0` spanning the screen and a
+dynamic `PolygonShape` block above it (with restitution, so it bounces
+on landing) — that block exists purely to prove the integration is
+live.
+
+Pixel ↔ meter conversion is centralized: every body is built using
+`config.physics.pixelsPerMeter`, and `PhysicsSystem` does the inverse
+when syncing positions back. Don't construct bodies in pixel coords —
+divide by `pixelsPerMeter` first.
+
+`World.dispose()` runs in `TheGame.dispose()`, which destroys every
+body it owns — you don't need to track bodies separately for cleanup.
+The existing R8 keep rules in `android/proguard-rules.pro` already
+preserve the Box2D JNI callback methods on `World`.
+
+#### Testing physics
+
+`PhysicsSystemTest` constructs a real `World` and real `Body` instances
+rather than mocking them — Mockito can't instrument `World` because its
+class init touches JNI, and even if it could the resulting tests would
+duplicate the Box2D integration in mocks. The native libs are pulled in
+as `testRuntimeOnly` (`gdx-platform:natives-desktop` and
+`gdx-box2d-platform:natives-desktop`) and `@BeforeAll` calls
+`GdxNativesLoader.load()` plus `Box2D.init()`. New physics tests should
+follow the same pattern: real World, real Bodies, observable state
+(positions after `engine.update(dt)`) as the assertion target.
 
 The `Engine` itself is provided by Dagger (`GameModule.provideEngine`),
 which constructs a `PooledEngine`, takes any systems as constructor

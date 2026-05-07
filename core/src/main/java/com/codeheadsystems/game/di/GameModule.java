@@ -8,12 +8,16 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Box2D;
+import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.system.AnimationSystem;
 import com.codeheadsystems.game.ecs.system.InputSystem;
 import com.codeheadsystems.game.ecs.system.MovementSystem;
+import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
 import dagger.Module;
 import dagger.Provides;
@@ -59,6 +63,13 @@ public class GameModule {
 
     @Provides
     @Singleton
+    World provideWorld(GameConfig config) {
+        Box2D.init(); // idempotent; safer than relying on lazy native loading.
+        return new World(new Vector2(config.physics.gravity.x, config.physics.gravity.y), /*doSleep=*/ true);
+    }
+
+    @Provides
+    @Singleton
     GameConfig provideGameConfig(ConfigLoader loader) {
         try (Reader reader = Gdx.files.internal(GAME_CONFIG_PATH).reader()) {
             return loader.load(GameConfig.class, reader);
@@ -70,11 +81,13 @@ public class GameModule {
     @Provides
     @Singleton
     Engine provideEngine(InputSystem inputSystem,
+                         PhysicsSystem physicsSystem,
                          MovementSystem movementSystem,
                          AnimationSystem animationSystem,
                          RenderSystem renderSystem) {
         Engine engine = new PooledEngine();
         engine.addSystem(inputSystem);
+        engine.addSystem(physicsSystem);
         engine.addSystem(movementSystem);
         engine.addSystem(animationSystem);
         engine.addSystem(renderSystem);

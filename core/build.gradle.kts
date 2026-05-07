@@ -40,6 +40,9 @@ dependencies {
     "testImplementation"("org.junit.jupiter:junit-jupiter:$junitVersion")
     "testImplementation"("org.mockito:mockito-core:$mockitoVersion")
     "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+    // Native libs so tests can construct real Box2D Worlds/Bodies — World's class init touches JNI.
+    "testRuntimeOnly"("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    "testRuntimeOnly"("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop")
 }
 
 // Load Mockito as an explicit JVM agent so it doesn't self-attach (deprecated on JDK 21+).

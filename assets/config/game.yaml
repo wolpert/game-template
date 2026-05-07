@@ -4,3 +4,8 @@ logo:
   y: 210
 player:
   speed: 200
+physics:
+  gravity:
+    x: 0
+    y: -9.8
+  pixelsPerMeter: 32
