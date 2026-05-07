@@ -4,170 +4,226 @@ size: 1024, 512
 format: RGBA8888
 filter: Nearest, Nearest
 repeat: none
-player1_Died
-  rotate: false
-  xy: 296, 132
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 0
-player1_Died
-  rotate: false
-  xy: 394, 262
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 1
-player1_Died
-  rotate: false
-  xy: 296, 2
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 2
-player1_Died
-  rotate: false
-  xy: 394, 132
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 3
-player1_Died
-  rotate: false
-  xy: 492, 262
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 4
-player1_Died
-  rotate: false
-  xy: 394, 2
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 5
-player1_Died
-  rotate: false
-  xy: 492, 132
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 6
-player1_Died
-  rotate: false
-  xy: 590, 262
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 7
-player1_DiedOld
-  rotate: false
-  xy: 2, 262
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 0
-player1_DiedOld
-  rotate: false
-  xy: 2, 132
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 1
-player1_DiedOld
-  rotate: false
-  xy: 100, 262
-  size: 96, 128
-  orig: 96, 128
-  offset: 0, 0
-  index: 2
-player1_DiedOld
+block_block
   rotate: false
   xy: 2, 2
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 0
+block_block
+  rotate: false
+  xy: 688, 262
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 1
+block_block
+  rotate: false
+  xy: 786, 392
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 2
+block_block
+  rotate: false
+  xy: 68, 2
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 3
+block_block
+  rotate: false
+  xy: 688, 196
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 4
+block_block
+  rotate: false
+  xy: 852, 392
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 5
+block_block
+  rotate: false
+  xy: 134, 2
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 6
+block_block
+  rotate: false
+  xy: 688, 130
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: 7
+player1_Died
+  rotate: false
+  xy: 296, 198
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 0
+player1_Died
+  rotate: false
+  xy: 394, 328
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 1
+player1_Died
+  rotate: false
+  xy: 296, 68
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 2
+player1_Died
+  rotate: false
+  xy: 394, 198
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 3
-player1_DiedOld
+player1_Died
   rotate: false
-  xy: 100, 132
+  xy: 492, 328
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 4
-player1_DiedOld
+player1_Died
   rotate: false
-  xy: 198, 262
+  xy: 394, 68
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 5
-player1_DiedOld
+player1_Died
   rotate: false
-  xy: 100, 2
+  xy: 492, 198
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 6
-player1_DiedOld
+player1_Died
   rotate: false
-  xy: 198, 132
+  xy: 590, 328
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 7
 player1_DiedOld
   rotate: false
-  xy: 296, 262
+  xy: 2, 328
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 0
+player1_DiedOld
+  rotate: false
+  xy: 2, 198
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 1
+player1_DiedOld
+  rotate: false
+  xy: 100, 328
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 2
+player1_DiedOld
+  rotate: false
+  xy: 2, 68
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 3
+player1_DiedOld
+  rotate: false
+  xy: 100, 198
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 4
+player1_DiedOld
+  rotate: false
+  xy: 198, 328
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 5
+player1_DiedOld
+  rotate: false
+  xy: 100, 68
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 6
+player1_DiedOld
+  rotate: false
+  xy: 198, 198
+  size: 96, 128
+  orig: 96, 128
+  offset: 0, 0
+  index: 7
+player1_DiedOld
+  rotate: false
+  xy: 296, 328
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 8
 player1_DiedOld
   rotate: false
-  xy: 198, 2
+  xy: 198, 68
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 9
 player1_Flying
   rotate: false
-  xy: 492, 2
+  xy: 492, 68
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 0
 player1_Flying
   rotate: false
-  xy: 590, 132
+  xy: 590, 198
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 1
 player1_Flying
   rotate: false
-  xy: 590, 132
+  xy: 590, 198
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 5
 player1_Flying
   rotate: false
-  xy: 688, 262
+  xy: 688, 328
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 2
 player1_Flying
   rotate: false
-  xy: 688, 262
+  xy: 688, 328
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
   index: 4
 player1_Flying
   rotate: false
-  xy: 590, 2
+  xy: 590, 68
   size: 96, 128
   orig: 96, 128
   offset: 0, 0
