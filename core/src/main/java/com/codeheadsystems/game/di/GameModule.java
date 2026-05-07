@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Box2D;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
@@ -47,6 +48,12 @@ public class GameModule {
     @Singleton
     TextureAtlas provideTextureAtlas() {
         return new TextureAtlas(GAME_ATLAS_PATH);
+    }
+
+    @Provides
+    @Singleton
+    Skin provideSkin() {
+        return new Skin(Gdx.files.internal("ui/uiskin.json"));
     }
 
     @Provides

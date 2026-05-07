@@ -279,8 +279,35 @@ Animation<TextureRegion> walk = new Animation<>(0.1f, walkFrames, Animation.Play
 Loading → Main Menu → { Preferences, Level Picker → Game }
 ```
 
-To add a new screen, implement `Screen`, register it with the Dagger
-graph, and add a transition from wherever it should be reachable.
+`TheGame` extends libGDX's `Game` and just builds the Dagger graph,
+then hands control to `ScreenNavigator`, which exposes
+`goToLoading()` / `goToMainMenu()` / `goToPreferences()` /
+`goToLevelPicker()` / `goToGame()`. Screens live in
+`com.codeheadsystems.game.screens`:
+
+* `LoadingScreen` — placeholder with a fixed-duration delay; replace
+  the timer with an `AssetManager` poll when you're ready for real
+  loading.
+* `MainMenuScreen`, `PreferencesScreen`, `LevelPickerScreen` — Scene2D
+  menus extending `BaseScreen`, which owns a `Stage` + viewport and the
+  standard `show/render/resize/dispose` boilerplate.
+* `GameScreen` — implements `Screen` directly (no Stage). Drives the
+  Ashley engine, builds the player/block/ground entities once on first
+  `show()`, and watches for `ESC` to return to the main menu.
+
+UI uses the bundled `assets/ui/uiskin.json` (provided as
+`@Singleton Skin` in `GameModule`). Each menu screen builds its widget
+tree in its `@Inject` constructor.
+
+#### Adding a new screen
+
+1. Create the class under `screens/`, extending `BaseScreen` (for menu
+   UI) or implementing `Screen` directly (for game-style screens).
+2. Annotate `@Singleton`, take `Skin` and `Provider<ScreenNavigator>`
+   via `@Inject` constructor — the `Provider` is required to break the
+   construction cycle between the navigator and its screens.
+3. Add a field + `goToXxx()` method to `ScreenNavigator`, plus a line
+   in `disposeAll()` so its `Stage` is released at app shutdown.
 
 ## Roadmap
 
