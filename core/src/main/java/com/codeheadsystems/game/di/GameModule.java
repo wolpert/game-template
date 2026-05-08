@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.PooledEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -36,6 +37,7 @@ public class GameModule {
     private static final String GAME_CONFIG_PATH = "config/game.yaml";
     public static final String GAME_ATLAS_PATH = "atlases/game-template.atlas";
     public static final String LOGO_TEXTURE_PATH = "libgdx.png";
+    private static final String PREFERENCES_NAME = "game-template";
 
     @Provides
     @Singleton
@@ -61,6 +63,12 @@ public class GameModule {
     @Singleton
     TextureAtlas provideTextureAtlas(AssetManager assets) {
         return assets.get(GAME_ATLAS_PATH, TextureAtlas.class);
+    }
+
+    @Provides
+    @Singleton
+    Preferences providePreferences() {
+        return Gdx.app.getPreferences(PREFERENCES_NAME);
     }
 
     @Provides

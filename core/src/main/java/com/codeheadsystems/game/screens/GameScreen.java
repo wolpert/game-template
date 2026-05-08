@@ -19,6 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.codeheadsystems.game.config.GameConfig;
+import com.codeheadsystems.game.debug.DebugOverlay;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
@@ -55,6 +56,7 @@ public class GameScreen extends BaseScreen {
     private final GameState state;
     private final BlockSpawnSystem spawner;
     private final Provider<ScreenNavigator> nav;
+    private final DebugOverlay debugOverlay;
 
     private final Label scoreLabel;
 
@@ -67,6 +69,7 @@ public class GameScreen extends BaseScreen {
                       GameState state,
                       BlockSpawnSystem spawner,
                       Provider<ScreenNavigator> nav,
+                      DebugOverlay debugOverlay,
                       Skin skin) {
         this.engine = engine;
         this.image = image;
@@ -76,6 +79,7 @@ public class GameScreen extends BaseScreen {
         this.state = state;
         this.spawner = spawner;
         this.nav = nav;
+        this.debugOverlay = debugOverlay;
 
         scoreLabel = new Label("", skin);
         Table hud = new Table();
@@ -120,6 +124,7 @@ public class GameScreen extends BaseScreen {
         engine.update(delta);
         stage.act(delta);
         stage.draw();
+        debugOverlay.render(delta);
 
         if (state.isGameOver()) {
             nav.get().goToGameOver();
@@ -128,6 +133,18 @@ public class GameScreen extends BaseScreen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             nav.get().goToMainMenu();
         }
+    }
+
+    @Override
+    public void resize(int width, int height) {
+        super.resize(width, height);
+        debugOverlay.resize(width, height);
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        debugOverlay.dispose();
     }
 
     private Entity buildBackground() {
