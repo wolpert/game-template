@@ -6,66 +6,72 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 
 /**
- * Single source of truth for screen transitions. Screens take a {@code Provider<ScreenNavigator>}
- * (lazy resolution breaks the construction cycle since the navigator depends on every screen);
- * the navigator depends on screens directly so it can {@link #disposeAll()} them at app shutdown.
+ * Single source of truth for screen transitions. Every screen is held as a {@link Provider}
+ * so its Scene2D tree is only built when first navigated to — important for cold-start on
+ * mobile where {@link LoadingScreen} should reach the GPU before any sibling screen does any
+ * work. Screens themselves take a {@code Provider<ScreenNavigator>} to break the construction
+ * cycle (the navigator references every screen).
  *
- * <p>{@link GameScreen} is taken as a {@code Provider} because its transitive deps
- * ({@link com.badlogic.gdx.graphics.g2d.TextureAtlas}, {@link com.badlogic.gdx.graphics.Texture})
- * are sourced from the {@link com.badlogic.gdx.assets.AssetManager} and are only loaded once
- * {@link LoadingScreen} has run. Building it eagerly at app start would resolve those providers
- * before the manager has been queued.
+ * <p>{@link GameScreen}'s transitive deps ({@link com.badlogic.gdx.graphics.g2d.TextureAtlas},
+ * {@link com.badlogic.gdx.graphics.Texture}) are sourced from the
+ * {@link com.badlogic.gdx.assets.AssetManager} and aren't valid until {@link LoadingScreen} has
+ * drained the manager — the lazy resolution that protects cold-start also protects that
+ * ordering for free.
  */
 @Singleton
 public class ScreenNavigator {
 
     private final Game game;
-    private final LoadingScreen loadingScreen;
-    private final MainMenuScreen mainMenuScreen;
-    private final PreferencesScreen preferencesScreen;
-    private final LevelPickerScreen levelPickerScreen;
-    private final Provider<GameScreen> gameScreenProvider;
-    private final GameOverScreen gameOverScreen;
+    private final Provider<LoadingScreen> loadingScreen;
+    private final Provider<MainMenuScreen> mainMenuScreen;
+    private final Provider<PreferencesScreen> preferencesScreen;
+    private final Provider<LevelPickerScreen> levelPickerScreen;
+    private final Provider<GameScreen> gameScreen;
+    private final Provider<GameOverScreen> gameOverScreen;
 
-    private boolean gameScreenBuilt;
+    private boolean loadingBuilt;
+    private boolean mainMenuBuilt;
+    private boolean preferencesBuilt;
+    private boolean levelPickerBuilt;
+    private boolean gameBuilt;
+    private boolean gameOverBuilt;
 
     @Inject
     public ScreenNavigator(Game game,
-                           LoadingScreen loadingScreen,
-                           MainMenuScreen mainMenuScreen,
-                           PreferencesScreen preferencesScreen,
-                           LevelPickerScreen levelPickerScreen,
-                           Provider<GameScreen> gameScreenProvider,
-                           GameOverScreen gameOverScreen) {
+                           Provider<LoadingScreen> loadingScreen,
+                           Provider<MainMenuScreen> mainMenuScreen,
+                           Provider<PreferencesScreen> preferencesScreen,
+                           Provider<LevelPickerScreen> levelPickerScreen,
+                           Provider<GameScreen> gameScreen,
+                           Provider<GameOverScreen> gameOverScreen) {
         this.game = game;
         this.loadingScreen = loadingScreen;
         this.mainMenuScreen = mainMenuScreen;
         this.preferencesScreen = preferencesScreen;
         this.levelPickerScreen = levelPickerScreen;
-        this.gameScreenProvider = gameScreenProvider;
+        this.gameScreen = gameScreen;
         this.gameOverScreen = gameOverScreen;
     }
 
-    public void goToLoading() { game.setScreen(loadingScreen); }
-    public void goToMainMenu() { game.setScreen(mainMenuScreen); }
-    public void goToPreferences() { game.setScreen(preferencesScreen); }
-    public void goToLevelPicker() { game.setScreen(levelPickerScreen); }
-    public void goToGame() {
-        gameScreenBuilt = true;
-        game.setScreen(gameScreenProvider.get());
-    }
-    public void goToGameOver() { game.setScreen(gameOverScreen); }
+    public void goToLoading() { loadingBuilt = true; game.setScreen(loadingScreen.get()); }
+    public void goToMainMenu() { mainMenuBuilt = true; game.setScreen(mainMenuScreen.get()); }
+    public void goToPreferences() { preferencesBuilt = true; game.setScreen(preferencesScreen.get()); }
+    public void goToLevelPicker() { levelPickerBuilt = true; game.setScreen(levelPickerScreen.get()); }
+    public void goToGame() { gameBuilt = true; game.setScreen(gameScreen.get()); }
+    public void goToGameOver() { gameOverBuilt = true; game.setScreen(gameOverScreen.get()); }
 
+    /**
+     * Dispose every screen actually constructed during this run. Resolving a provider that was
+     * never visited would force its Scene2D tree to be built just to throw it away — and for
+     * {@link GameScreen} that would also resolve atlas/texture providers that may not yet be
+     * valid.
+     */
     public void disposeAll() {
-        loadingScreen.dispose();
-        mainMenuScreen.dispose();
-        preferencesScreen.dispose();
-        levelPickerScreen.dispose();
-        // Only dispose GameScreen if we ever built it; otherwise calling provider.get() would
-        // construct it (and force atlas/texture resolution) just to throw the result away.
-        if (gameScreenBuilt) {
-            gameScreenProvider.get().dispose();
-        }
-        gameOverScreen.dispose();
+        if (loadingBuilt) loadingScreen.get().dispose();
+        if (mainMenuBuilt) mainMenuScreen.get().dispose();
+        if (preferencesBuilt) preferencesScreen.get().dispose();
+        if (levelPickerBuilt) levelPickerScreen.get().dispose();
+        if (gameBuilt) gameScreen.get().dispose();
+        if (gameOverBuilt) gameOverScreen.get().dispose();
     }
 }

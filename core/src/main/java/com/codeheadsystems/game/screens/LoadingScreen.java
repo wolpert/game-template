@@ -1,13 +1,13 @@
 package com.codeheadsystems.game.screens;
 
 import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.codeheadsystems.game.di.GameModule;
+import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.codeheadsystems.game.assets.Asset;
+import com.codeheadsystems.game.assets.AssetManifest;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -16,6 +16,10 @@ import javax.inject.Singleton;
  * Drives initial asset loading via {@link AssetManager} and reflects progress with a Scene2D
  * {@link ProgressBar}. The transition out is gated on both the manager finishing AND a minimum
  * display time — instant loads otherwise flash by unreadably.
+ *
+ * <p>Asset queue is driven by the {@link Asset} enum; before queuing, each path is validated
+ * against {@link AssetManifest} (the gradle-generated {@code assets.txt}) so a renamed or
+ * deleted file fails fast with a precise error.
  *
  * <p>The {@link Skin} itself is loaded eagerly by Dagger (not via the manager) since this screen
  * needs it to render the bar — the chicken-and-egg is unavoidable for the screen that displays
@@ -28,15 +32,20 @@ public class LoadingScreen extends BaseScreen {
 
     private final Provider<ScreenNavigator> nav;
     private final AssetManager assets;
+    private final AssetManifest manifest;
     private final ProgressBar progressBar;
     private final Label percentLabel;
     private float elapsed;
     private boolean queued;
 
     @Inject
-    public LoadingScreen(Skin skin, Provider<ScreenNavigator> nav, AssetManager assets) {
+    public LoadingScreen(Skin skin,
+                         Provider<ScreenNavigator> nav,
+                         AssetManager assets,
+                         AssetManifest manifest) {
         this.nav = nav;
         this.assets = assets;
+        this.manifest = manifest;
 
         progressBar = new ProgressBar(0f, 1f, 0.01f, false, skin);
         progressBar.setAnimateDuration(0.1f);
@@ -55,8 +64,14 @@ public class LoadingScreen extends BaseScreen {
         super.show();
         elapsed = 0f;
         if (!queued) {
-            assets.load(GameModule.LOGO_TEXTURE_PATH, Texture.class);
-            assets.load(GameModule.GAME_ATLAS_PATH, TextureAtlas.class);
+            for (Asset asset : Asset.values()) {
+                if (!manifest.contains(asset.path)) {
+                    throw new GdxRuntimeException("Asset " + asset + " path '" + asset.path
+                            + "' is not in " + AssetManifest.MANIFEST_PATH
+                            + " — file is missing or the manifest is stale (re-run :core:processResources).");
+                }
+                assets.load(asset.path, asset.type);
+            }
             queued = true;
         }
     }

@@ -15,6 +15,7 @@ import com.badlogic.gdx.physics.box2d.Box2D;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.codeheadsystems.game.assets.Asset;
 import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.system.AnimationSystem;
@@ -35,8 +36,6 @@ import javax.inject.Singleton;
 public class GameModule {
 
     private static final String GAME_CONFIG_PATH = "config/game.yaml";
-    public static final String GAME_ATLAS_PATH = "atlases/game-template.atlas";
-    public static final String LOGO_TEXTURE_PATH = "libgdx.png";
     private static final String PREFERENCES_NAME = "game-template";
 
     @Provides
@@ -56,13 +55,13 @@ public class GameModule {
     @Provides
     @Singleton
     Texture provideLogoTexture(AssetManager assets) {
-        return assets.get(LOGO_TEXTURE_PATH, Texture.class);
+        return assets.get(Asset.LOGO.path, Texture.class);
     }
 
     @Provides
     @Singleton
     TextureAtlas provideTextureAtlas(AssetManager assets) {
-        return assets.get(GAME_ATLAS_PATH, TextureAtlas.class);
+        return assets.get(Asset.GAME_ATLAS.path, TextureAtlas.class);
     }
 
     @Provides
