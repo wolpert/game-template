@@ -26,6 +26,8 @@ import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PlayerComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
+import com.codeheadsystems.game.ecs.component.VelocityComponent;
+import com.codeheadsystems.game.ecs.component.WrapAroundComponent;
 import com.codeheadsystems.game.ecs.system.BlockSpawnSystem;
 import com.codeheadsystems.game.session.GameState;
 import javax.inject.Inject;
@@ -47,6 +49,8 @@ public class GameScreen extends BaseScreen {
     // Derive new values via: identify -format "%[bounding-box]" build/aseprite-frames/<frame>.png
     private static final int PLAYER_BODY_WIDTH = 64;
     private static final int PLAYER_BODY_HEIGHT = 116;
+    /** Background drift in px/s — slow enough to read as parallax, not motion sickness. */
+    private static final float BACKGROUND_DRIFT_PX_PER_SEC = 30f;
 
     private final Engine engine;
     private final Texture image;
@@ -147,6 +151,12 @@ public class GameScreen extends BaseScreen {
         debugOverlay.dispose();
     }
 
+    /**
+     * Demo consumer of {@link com.codeheadsystems.game.ecs.system.MovementSystem}: the libGDX
+     * logo drifts horizontally at a slow constant speed and loops via
+     * {@link com.codeheadsystems.game.ecs.system.WrapAroundSystem}. Pure cosmetic motion — no
+     * Box2D body, so no collision.
+     */
     private Entity buildBackground() {
         Entity entity = new Entity();
         PositionComponent pos = new PositionComponent();
@@ -155,8 +165,14 @@ public class GameScreen extends BaseScreen {
         pos.z = 0;
         TextureComponent tex = new TextureComponent();
         tex.region = new TextureRegion(image);
+        VelocityComponent vel = new VelocityComponent();
+        vel.dx = BACKGROUND_DRIFT_PX_PER_SEC;
+        WrapAroundComponent wrap = new WrapAroundComponent();
+        wrap.widthPx = image.getWidth();
         entity.add(pos);
         entity.add(tex);
+        entity.add(vel);
+        entity.add(wrap);
         return entity;
     }
 

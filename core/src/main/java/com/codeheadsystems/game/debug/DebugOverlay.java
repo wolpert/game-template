@@ -10,8 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.codeheadsystems.game.prefs.UserPreferences;
 import com.codeheadsystems.game.session.GameState;
-import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -99,14 +98,30 @@ public class DebugOverlay {
         stage.draw();
     }
 
+    /**
+     * Reflective probe of {@code java.lang.management.ManagementFactory} — Android's
+     * platform stubs don't include the {@code java.lang.management} package, so a direct
+     * reference fails R8's missing-class check on a release Android build. Returns -1 when
+     * the API isn't reachable (Android, GraalVM image without management metadata, etc.).
+     */
     private static long gcCount() {
-        long total = 0;
-        List<GarbageCollectorMXBean> beans = ManagementFactory.getGarbageCollectorMXBeans();
-        for (GarbageCollectorMXBean bean : beans) {
-            long c = bean.getCollectionCount();
-            if (c > 0) total += c;
+        try {
+            Class<?> factory = Class.forName("java.lang.management.ManagementFactory");
+            Object beans = factory.getMethod("getGarbageCollectorMXBeans").invoke(null);
+            if (!(beans instanceof List<?> list)) return -1;
+            long total = 0;
+            Method getCount = null;
+            for (Object bean : list) {
+                if (getCount == null) {
+                    getCount = bean.getClass().getMethod("getCollectionCount");
+                }
+                long c = (Long) getCount.invoke(bean);
+                if (c > 0) total += c;
+            }
+            return total;
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return -1L;
         }
-        return total;
     }
 
     public void dispose() {

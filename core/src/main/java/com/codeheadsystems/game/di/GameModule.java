@@ -25,6 +25,7 @@ import com.codeheadsystems.game.ecs.system.InputSystem;
 import com.codeheadsystems.game.ecs.system.MovementSystem;
 import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
+import com.codeheadsystems.game.ecs.system.WrapAroundSystem;
 import com.codeheadsystems.game.session.GameContactListener;
 import dagger.Module;
 import dagger.Provides;
@@ -50,38 +51,69 @@ public class GameModule {
         return new AssetManager();
     }
 
-    // Sourced from AssetManager — LoadingScreen queues + drains the manager before any consumer
-    // (currently only GameScreen, deferred via Provider in ScreenNavigator) resolves these.
+    /**
+     * Lifecycle foot-gun: throws {@code GdxRuntimeException} if {@link AssetManager} hasn't yet
+     * finished loading {@link Asset#LOGO}. Callers must defer the lookup until {@code LoadingScreen}
+     * has drained the manager — depend on {@code Provider<Texture>} (or be transitively reachable
+     * only from a screen reached after loading), not on {@code Texture} directly.
+     */
     @Provides
     @Singleton
     Texture provideLogoTexture(AssetManager assets) {
         return assets.get(Asset.LOGO.path, Texture.class);
     }
 
+    /**
+     * Lifecycle foot-gun: throws {@code GdxRuntimeException} if {@link AssetManager} hasn't yet
+     * finished loading {@link Asset#GAME_ATLAS}. See {@link #provideLogoTexture} — same {@code Provider}
+     * deferral applies.
+     */
     @Provides
     @Singleton
     TextureAtlas provideTextureAtlas(AssetManager assets) {
         return assets.get(Asset.GAME_ATLAS.path, TextureAtlas.class);
     }
 
+    /**
+     * Lifecycle foot-gun: {@link Gdx#app} is null until {@code Lwjgl3Launcher} (or the Android
+     * {@code AndroidLauncher}) has constructed the {@link com.badlogic.gdx.Application}. Don't
+     * resolve this provider during graph construction — {@code TheGame.create()} runs the Dagger
+     * builder, so anything reached from {@code inject(this)} is safe.
+     */
     @Provides
     @Singleton
     Preferences providePreferences() {
         return Gdx.app.getPreferences(PREFERENCES_NAME);
     }
 
+    /**
+     * Lifecycle foot-gun: {@link Gdx#files} is null until libGDX has finished platform init in
+     * {@code create()}. Same constraint as {@link #providePreferences()} — safe to resolve from
+     * inside {@code TheGame.create()} onward, unsafe before.
+     */
     @Provides
     @Singleton
     Skin provideSkin() {
         return new Skin(Gdx.files.internal("ui/uiskin.json"));
     }
 
+    /**
+     * Lifecycle-dependent global: {@link Gdx#input} is the live polling singleton, not a snapshot.
+     * Captured at injection time, but the underlying object's state changes every frame — never
+     * cache derived values across frames. Consumers must run inside a system's {@code update()} or
+     * a screen's {@code render()}, never during graph construction.
+     */
     @Provides
     @Singleton
     Input provideInput() {
         return Gdx.input;
     }
 
+    /**
+     * Lifecycle-dependent global: {@link Gdx#graphics} is the live frame/window object. Width and
+     * height change on resize; FPS and delta change every frame. Same constraint as
+     * {@link #provideInput()} — only call into it from per-frame paths.
+     */
     @Provides
     @Singleton
     Graphics provideGraphics() {
@@ -112,6 +144,7 @@ public class GameModule {
     Engine provideEngine(InputSystem inputSystem,
                          PhysicsSystem physicsSystem,
                          MovementSystem movementSystem,
+                         WrapAroundSystem wrapAroundSystem,
                          BlockSpawnSystem blockSpawnSystem,
                          DeathSystem deathSystem,
                          AnimationSystem animationSystem,
@@ -120,6 +153,7 @@ public class GameModule {
         engine.addSystem(inputSystem);
         engine.addSystem(physicsSystem);
         engine.addSystem(movementSystem);
+        engine.addSystem(wrapAroundSystem);
         engine.addSystem(blockSpawnSystem);
         engine.addSystem(deathSystem);
         engine.addSystem(animationSystem);
