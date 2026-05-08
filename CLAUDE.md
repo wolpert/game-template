@@ -45,7 +45,7 @@ GraalVM native image is opt-in. Set `enableGraalNative=true` in `gradle.properti
 
 ## What you actually have vs. what the README promises
 
-The README describes an aspirational template (Dagger DI, Ashley ECS, Box2D wiring, loading/menu/preferences screens, YAML config, Aseprite import pipeline, falling-blocks sample). Some of it is real now; most still isn't — Box2D wiring, screens, YAML, and the Aseprite pipeline aren't implemented, and several deps (gdx-ai, gdx-vfx, libgdx-utils-box2d, box2dlights) are pulled into `core/build.gradle.kts` but unused.
+The README describes the template's features (Dagger DI, Ashley ECS, Box2D wiring, loading/menu/preferences screens, YAML config, Aseprite import pipeline, falling-blocks sample) — all are implemented and wired through the Dagger graph described below.
 
 **Dagger is wired up.** The graph lives under `com.codeheadsystems.game.di`: `GameModule` provides the shared `SpriteBatch` / `Texture` / Ashley `Engine`, `GameComponent` exposes `inject(TheGame)`, and `TheGame.create()` builds the component (`DaggerGameComponent.create().inject(this)`) so providers run after libGDX has initialized GL. Annotation processing is configured via `annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"` in `core/build.gradle.kts`; generated sources land at `core/build/generated/sources/annotationProcessor/...`.
 
