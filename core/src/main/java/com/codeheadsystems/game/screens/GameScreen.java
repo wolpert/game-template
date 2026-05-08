@@ -22,6 +22,7 @@ import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
+import com.codeheadsystems.game.ecs.component.PlayerComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
 import com.codeheadsystems.game.ecs.system.BlockSpawnSystem;
@@ -76,7 +77,7 @@ public class GameScreen extends BaseScreen {
         this.spawner = spawner;
         this.nav = nav;
 
-        scoreLabel = new Label("Time: 0.0", skin);
+        scoreLabel = new Label("", skin);
         Table hud = new Table();
         hud.setFillParent(true);
         hud.top().left().pad(10);
@@ -110,17 +111,17 @@ public class GameScreen extends BaseScreen {
 
     @Override
     public void render(float delta) {
-        if (!state.gameOver) {
+        if (state.isPlaying()) {
             state.elapsedSec += delta;
         }
-        scoreLabel.setText(String.format("Time: %.1f", state.elapsedSec));
+        scoreLabel.setText(String.format("HP: %d   Time: %.1f", Math.max(0, state.hp), state.elapsedSec));
 
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
         engine.update(delta);
         stage.act(delta);
         stage.draw();
 
-        if (state.gameOver) {
+        if (state.isGameOver()) {
             nav.get().goToGameOver();
             return;
         }
@@ -183,6 +184,7 @@ public class GameScreen extends BaseScreen {
         entity.add(anim);
         entity.add(bc);
         entity.add(new InputComponent());
+        entity.add(new PlayerComponent());
         body.setUserData(entity);
         return entity;
     }

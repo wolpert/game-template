@@ -29,6 +29,8 @@ public class GameContactListener implements ContactListener {
 
     @Override
     public void beginContact(Contact contact) {
+        if (!state.isPlaying()) return; // ignore late contacts during DYING / GAME_OVER
+
         Object aData = contact.getFixtureA().getBody().getUserData();
         Object bData = contact.getFixtureB().getBody().getUserData();
         if (!(aData instanceof Entity) || !(bData instanceof Entity)) return;
@@ -38,7 +40,10 @@ public class GameContactListener implements ContactListener {
         boolean playerHitsBlock = (inputs.has(a) && blocks.has(b))
                 || (inputs.has(b) && blocks.has(a));
         if (playerHitsBlock) {
-            state.gameOver = true;
+            state.hp--;
+            if (state.hp <= 0) {
+                state.phase = GameState.Phase.DYING;
+            }
         }
     }
 

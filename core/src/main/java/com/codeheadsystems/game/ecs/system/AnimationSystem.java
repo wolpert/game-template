@@ -26,6 +26,8 @@ public class AnimationSystem extends IteratingSystem {
     protected void processEntity(Entity entity, float deltaTime) {
         AnimationComponent anim = animations.get(entity);
         anim.elapsed += deltaTime;
-        textures.get(entity).region = anim.animation.getKeyFrame(anim.elapsed, true);
+        // Use the playMode-respecting overload — LOOP animations loop, NORMAL animations stop on
+        // the last frame. The two-arg overload would override the Animation's intrinsic playMode.
+        textures.get(entity).region = anim.animation.getKeyFrame(anim.elapsed);
     }
 }

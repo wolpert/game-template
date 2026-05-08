@@ -53,8 +53,8 @@ class BlockSpawnSystemTest {
     }
 
     @Test
-    void doesNotSpawnWhenGameOver() {
-        state.gameOver = true;
+    void doesNotSpawnWhenNotPlaying() {
+        state.phase = GameState.Phase.DYING; // any non-PLAYING phase suffices
 
         engine.update(5f); // far beyond an interval
 

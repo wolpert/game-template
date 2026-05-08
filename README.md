@@ -16,7 +16,7 @@ just cloning the repository.
 * YAML support
 * Stubbed out screens include loading screen, main menu, preferences and level picker.
 * Support for importing aseprite files for animation easily.
-* Sample game includes a moving 2D character dodging falling blocks (touch/click to move; one-block-touch ends the run, score is time survived) wired up to Box2D.
+* Sample game includes a moving 2D character dodging falling blocks (touch/click to move; 5 hits ends the run after a death animation, score is time survived) wired up to Box2D.
 
 ## Prerequisites
 
@@ -99,12 +99,14 @@ Layout:
   * `InputComponent` — marker; tagged entities read pointer input each tick.
   * `BodyComponent` — wraps a Box2D `Body`. `PhysicsSystem` writes the body's center back to `PositionComponent` (in pixels, as the texture's bottom-left) each tick.
   * `BlockComponent` — marker; identifies falling-block entities so the contact listener can recognize player↔block hits.
+  * `PlayerComponent` — marker; lets `DeathSystem` find the player without coupling to `InputComponent` (which is about input, not identity).
 * `ecs/system/` — behavior, ordered by priority (lower runs earlier).
   * `InputSystem` (priority -10) drives input-controlled **physics bodies** toward the pointer at constant speed and stops them at the pointer or the screen edge. Family is `Input + Body + Position + Texture`; each tick it clamps `pos.x` to `[0, screenW − spriteW]` (correcting via `body.setTransform(...)` if needed), then either sets `body.setLinearVelocity(±speed/ppm, 0)` or, when within one frame's max travel of the target, snaps the body with `setTransform` and zeros velocity. The snap path uses `setTransform` rather than calibrated velocity because Box2D's fixed timestep can't be aligned with the frame's `dt` — for a kinematic body, teleporting cleanly is the right tool. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
   * `PhysicsSystem` (priority -8) accumulates frame deltas (capped at 0.25s) and runs Box2D `world.step(1/60s, 6, 2)` as many times as fit, then writes each body's center back to `PositionComponent` in pixels (subtracting the texture's half-extents so the result is bottom-left-anchored, the form `RenderSystem` expects).
   * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components. The current demo doesn't use it (the player uses Box2D for motion), but it's kept as the canonical pattern for non-physical entities.
-  * `BlockSpawnSystem` (priority -9) spawns a fresh falling block every 1.5s by delegating to `FallingBlockFactory`; halts when `GameState.gameOver` is true. `reset()` schedules an immediate next spawn (used on session restart).
-  * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`.
+  * `BlockSpawnSystem` (priority -9) spawns a fresh falling block every 1.5s by delegating to `FallingBlockFactory`; halts when `!GameState.isPlaying()`. `reset()` schedules an immediate next spawn (used on session restart).
+  * `DeathSystem` (priority -6) drives the death sequence: when `GameState.phase` is `DYING`, swaps the player's `AnimationComponent.animation` to the one-shot `player1_Died` clip and resets elapsed; on a later tick, when `Animation.isAnimationFinished(elapsed)` returns true, sets phase to `GAME_OVER` so `GameScreen.render` can navigate away. Runs before `AnimationSystem` so the swap takes effect on the same tick the phase changed.
+  * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`. Calls `Animation.getKeyFrame(elapsed)` (the one-arg overload) so each animation's intrinsic `PlayMode` is honored — `LOOP` animations loop, `NORMAL` animations stop on the last frame.
   * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
 
 `Gdx.input` and `Gdx.graphics` are bound through Dagger (`provideInput`,
@@ -131,10 +133,20 @@ each `show()`) tears down any prior session and populates the world:
   player↔block via component markers (`InputComponent` vs
   `BlockComponent`).
 
-When the contact listener detects a player↔block touch it sets
-`GameState.gameOver = true`; `GameScreen.render` notices on the next
-frame and navigates to `GameOverScreen`, which displays the elapsed
-time and offers Try Again / Main Menu.
+`GameState` tracks the session in three explicit phases — `PLAYING`,
+`DYING`, `GAME_OVER` — plus an `int hp` (5 to start, in
+`GameState.MAX_HP`) and an `elapsedSec` score. The contact listener
+decrements `hp` on each player↔block contact while `PLAYING`; when
+`hp` reaches 0 it flips the phase to `DYING`. From there:
+
+* `BlockSpawnSystem` and `InputSystem` both gate on
+  `state.isPlaying()` — no new blocks spawn, the player freezes in
+  place.
+* `DeathSystem` swaps in the `player1_Died` animation (with
+  `PlayMode.NORMAL`) and watches for `isAnimationFinished`.
+* On finish, phase becomes `GAME_OVER`; `GameScreen.render` notices
+  and navigates to `GameOverScreen`, which displays the elapsed time
+  and offers Try Again / Main Menu.
 
 Pixel ↔ meter conversion is centralized: every body is built using
 `config.physics.pixelsPerMeter`, and `PhysicsSystem` does the inverse

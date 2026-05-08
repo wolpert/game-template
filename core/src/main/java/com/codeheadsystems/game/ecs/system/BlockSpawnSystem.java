@@ -27,7 +27,7 @@ public class BlockSpawnSystem extends EntitySystem {
 
     @Override
     public void update(float deltaTime) {
-        if (state.gameOver) return;
+        if (!state.isPlaying()) return;
         timer += deltaTime;
         while (timer >= SPAWN_INTERVAL) {
             timer -= SPAWN_INTERVAL;

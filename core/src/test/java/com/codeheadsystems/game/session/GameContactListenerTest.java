@@ -1,5 +1,6 @@
 package com.codeheadsystems.game.session;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,23 +43,43 @@ class GameContactListenerTest {
     }
 
     @Test
-    void setsGameOverWhenPlayerCollidesWithBlock() {
-        Entity playerEntity = new Entity();
-        playerEntity.add(new InputComponent());
-        Body player = createUnitBody(0f, 0f);
-        player.setUserData(playerEntity);
+    void decrementsHpOnPlayerBlockHitButStaysInPlaying() {
+        spawnPlayerAt(0f, 0f);
+        spawnBlockAt(0.5f, 0f); // overlapping with player
 
-        Entity blockEntity = new Entity();
-        blockEntity.add(new BlockComponent());
-        // Overlap by more than the slop tolerance so beginContact fires immediately.
-        Body block = createUnitBody(0.5f, 0f);
-        block.setUserData(blockEntity);
+        stepUntil(() -> state.hp < GameState.MAX_HP, 10);
 
-        for (int i = 0; i < 10 && !state.gameOver; i++) {
+        assertEquals(GameState.MAX_HP - 1, state.hp);
+        assertEquals(GameState.Phase.PLAYING, state.phase);
+    }
+
+    @Test
+    void transitionsToDyingAfterHpReachesZero() {
+        spawnPlayerAt(0f, 0f);
+        // Each block contributes one beginContact event (one hit) before they all rest in a pile.
+        for (int i = 0; i < GameState.MAX_HP; i++) {
+            spawnBlockAt(0.4f + i * 0.1f, 0f); // tightly packed, all overlapping the player
+        }
+
+        stepUntil(() -> state.phase == GameState.Phase.DYING, 30);
+
+        assertEquals(0, state.hp);
+        assertEquals(GameState.Phase.DYING, state.phase);
+    }
+
+    @Test
+    void doesNotDecrementWhenAlreadyDying() {
+        state.phase = GameState.Phase.DYING;
+        state.hp = 0;
+        spawnPlayerAt(0f, 0f);
+        spawnBlockAt(0.5f, 0f);
+
+        for (int i = 0; i < 10; i++) {
             world.step(1f / 60f, 6, 2);
         }
 
-        assertTrue(state.gameOver);
+        assertEquals(0, state.hp);
+        assertEquals(GameState.Phase.DYING, state.phase);
     }
 
     @Test
@@ -77,12 +98,12 @@ class GameContactListenerTest {
             world.step(1f / 60f, 6, 2);
         }
 
-        assertFalse(state.gameOver);
+        assertEquals(GameState.MAX_HP, state.hp);
+        assertFalse(state.isGameOver());
     }
 
     @Test
     void ignoresBodiesWithoutEntityUserData() {
-        // Two bodies with no userData (e.g., walls or ground) overlap — listener must not crash or trip game-over.
         createUnitBody(0f, 0f);
         createUnitBody(0.5f, 0f);
 
@@ -90,7 +111,22 @@ class GameContactListenerTest {
             world.step(1f / 60f, 6, 2);
         }
 
-        assertFalse(state.gameOver);
+        assertEquals(GameState.MAX_HP, state.hp);
+        assertEquals(GameState.Phase.PLAYING, state.phase);
+    }
+
+    private void spawnPlayerAt(float x, float y) {
+        Entity player = new Entity();
+        player.add(new InputComponent());
+        Body body = createUnitBody(x, y);
+        body.setUserData(player);
+    }
+
+    private void spawnBlockAt(float x, float y) {
+        Entity block = new Entity();
+        block.add(new BlockComponent());
+        Body body = createUnitBody(x, y);
+        body.setUserData(block);
     }
 
     private Body createUnitBody(float x, float y) {
@@ -103,5 +139,16 @@ class GameContactListenerTest {
         body.createFixture(shape, 1f);
         shape.dispose();
         return body;
+    }
+
+    private void stepUntil(java.util.function.BooleanSupplier condition, int maxSteps) {
+        for (int i = 0; i < maxSteps; i++) {
+            world.step(1f / 60f, 6, 2);
+            if (condition.getAsBoolean()) {
+                assertTrue(true);
+                return;
+            }
+        }
+        assertTrue(condition.getAsBoolean(), "condition never became true within " + maxSteps + " steps");
     }
 }

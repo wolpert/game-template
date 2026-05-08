@@ -17,6 +17,7 @@ import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.system.AnimationSystem;
 import com.codeheadsystems.game.ecs.system.BlockSpawnSystem;
+import com.codeheadsystems.game.ecs.system.DeathSystem;
 import com.codeheadsystems.game.ecs.system.InputSystem;
 import com.codeheadsystems.game.ecs.system.MovementSystem;
 import com.codeheadsystems.game.ecs.system.PhysicsSystem;
@@ -95,6 +96,7 @@ public class GameModule {
                          PhysicsSystem physicsSystem,
                          MovementSystem movementSystem,
                          BlockSpawnSystem blockSpawnSystem,
+                         DeathSystem deathSystem,
                          AnimationSystem animationSystem,
                          RenderSystem renderSystem) {
         Engine engine = new PooledEngine();
@@ -102,6 +104,7 @@ public class GameModule {
         engine.addSystem(physicsSystem);
         engine.addSystem(movementSystem);
         engine.addSystem(blockSpawnSystem);
+        engine.addSystem(deathSystem);
         engine.addSystem(animationSystem);
         engine.addSystem(renderSystem);
         return engine;

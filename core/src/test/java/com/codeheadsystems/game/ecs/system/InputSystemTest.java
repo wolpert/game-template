@@ -22,6 +22,7 @@ import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
+import com.codeheadsystems.game.session.GameState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,7 @@ class InputSystemTest {
 
     private Input input;
     private GameConfig config;
+    private GameState state;
     private World world;
     private Body body;
     private PositionComponent position;
@@ -62,6 +64,8 @@ class InputSystemTest {
         config.player.speed = SPEED;
         config.physics = new GameConfig.PhysicsConfig();
         config.physics.pixelsPerMeter = PPM;
+
+        state = new GameState();
 
         world = new World(new Vector2(0f, 0f), true);
 
@@ -89,7 +93,7 @@ class InputSystemTest {
         player.add(bc);
 
         engine = new PooledEngine();
-        engine.addSystem(new InputSystem(input, graphics, config));
+        engine.addSystem(new InputSystem(input, graphics, config, state));
         engine.addEntity(player);
     }
 
@@ -167,6 +171,19 @@ class InputSystemTest {
         assertEquals(0f, position.x, 1e-4);
         // body center should be at (0 + 48) / PPM = 48 / PPM
         assertEquals(48f / PPM, body.getPosition().x, 1e-4);
+    }
+
+    @Test
+    void freezesBodyWhenNotPlaying() {
+        // DYING / GAME_OVER should ignore the cursor and zero velocity each tick.
+        state.phase = GameState.Phase.DYING;
+        body.setLinearVelocity(SPEED_MPS, 0f); // simulate mid-motion at the moment of death
+        when(input.isTouched()).thenReturn(true);
+        when(input.getX()).thenReturn(50);
+
+        engine.update(DT);
+
+        assertEquals(0f, body.getLinearVelocity().x, 1e-4);
     }
 
     @Test

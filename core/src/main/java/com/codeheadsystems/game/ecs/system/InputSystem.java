@@ -12,6 +12,7 @@ import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
+import com.codeheadsystems.game.session.GameState;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -30,24 +31,31 @@ public class InputSystem extends IteratingSystem {
     private final ComponentMapper<BodyComponent> bodies = ComponentMapper.getFor(BodyComponent.class);
     private final Input input;
     private final Graphics graphics;
+    private final GameState state;
     private final float speedPx;
     private final float pixelsPerMeter;
 
     @Inject
-    public InputSystem(Input input, Graphics graphics, GameConfig config) {
+    public InputSystem(Input input, Graphics graphics, GameConfig config, GameState state) {
         super(Family.all(InputComponent.class, BodyComponent.class,
                 PositionComponent.class, TextureComponent.class).get(), PRIORITY);
         this.input = input;
         this.graphics = graphics;
+        this.state = state;
         this.speedPx = config.player.speed;
         this.pixelsPerMeter = config.physics.pixelsPerMeter;
     }
 
     @Override
     protected void processEntity(Entity entity, float deltaTime) {
+        Body body = bodies.get(entity).body;
+        if (!state.isPlaying()) {
+            // Freeze input-driven entities during DYING / GAME_OVER so the death animation isn't dragged around.
+            body.setLinearVelocity(0f, 0f);
+            return;
+        }
         PositionComponent pos = positions.get(entity);
         TextureComponent tex = textures.get(entity);
-        Body body = bodies.get(entity).body;
 
         int spriteW = tex.region.getRegionWidth();
         float maxX = Math.max(0f, graphics.getWidth() - spriteW);
