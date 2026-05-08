@@ -2,9 +2,8 @@ package com.codeheadsystems.game;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.codeheadsystems.game.di.DaggerGameComponent;
@@ -13,14 +12,17 @@ import javax.inject.Inject;
 
 /**
  * Entry point — builds the Dagger graph and hands control to {@link ScreenNavigator}, which
- * drives all screen transitions. The persistent resources (batch, textures, world, skin) live
- * here for app-lifetime ownership; per-screen state (Stages) lives on the screens themselves.
+ * drives all screen transitions. The persistent resources (batch, asset manager, world, skin)
+ * live here for app-lifetime ownership; per-screen state (Stages) lives on the screens themselves.
+ *
+ * <p>{@link AssetManager} owns every {@link com.badlogic.gdx.graphics.Texture} and
+ * {@link com.badlogic.gdx.graphics.g2d.TextureAtlas} loaded by the game, so disposing it
+ * releases the lot — no need to track those individually here.
  */
 public class TheGame extends Game {
 
     @Inject SpriteBatch batch;
-    @Inject Texture image;
-    @Inject TextureAtlas atlas;
+    @Inject AssetManager assets;
     @Inject World world;
     @Inject Skin skin;
     @Inject ScreenNavigator nav;
@@ -40,8 +42,7 @@ public class TheGame extends Game {
         }
         nav.disposeAll();
         batch.dispose();
-        image.dispose();
-        atlas.dispose();
+        assets.dispose();
         world.dispose();
         skin.dispose();
     }

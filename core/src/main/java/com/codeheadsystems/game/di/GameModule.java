@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.PooledEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -33,7 +34,8 @@ import javax.inject.Singleton;
 public class GameModule {
 
     private static final String GAME_CONFIG_PATH = "config/game.yaml";
-    private static final String GAME_ATLAS_PATH = "atlases/game-template.atlas";
+    public static final String GAME_ATLAS_PATH = "atlases/game-template.atlas";
+    public static final String LOGO_TEXTURE_PATH = "libgdx.png";
 
     @Provides
     @Singleton
@@ -43,14 +45,22 @@ public class GameModule {
 
     @Provides
     @Singleton
-    Texture provideLogoTexture() {
-        return new Texture("libgdx.png");
+    AssetManager provideAssetManager() {
+        return new AssetManager();
+    }
+
+    // Sourced from AssetManager — LoadingScreen queues + drains the manager before any consumer
+    // (currently only GameScreen, deferred via Provider in ScreenNavigator) resolves these.
+    @Provides
+    @Singleton
+    Texture provideLogoTexture(AssetManager assets) {
+        return assets.get(LOGO_TEXTURE_PATH, Texture.class);
     }
 
     @Provides
     @Singleton
-    TextureAtlas provideTextureAtlas() {
-        return new TextureAtlas(GAME_ATLAS_PATH);
+    TextureAtlas provideTextureAtlas(AssetManager assets) {
+        return assets.get(GAME_ATLAS_PATH, TextureAtlas.class);
     }
 
     @Provides
