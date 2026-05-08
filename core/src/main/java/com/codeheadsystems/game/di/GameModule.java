@@ -16,10 +16,12 @@ import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.system.AnimationSystem;
+import com.codeheadsystems.game.ecs.system.BlockSpawnSystem;
 import com.codeheadsystems.game.ecs.system.InputSystem;
 import com.codeheadsystems.game.ecs.system.MovementSystem;
 import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
+import com.codeheadsystems.game.session.GameContactListener;
 import dagger.Module;
 import dagger.Provides;
 import java.io.IOException;
@@ -70,9 +72,11 @@ public class GameModule {
 
     @Provides
     @Singleton
-    World provideWorld(GameConfig config) {
+    World provideWorld(GameConfig config, GameContactListener listener) {
         Box2D.init(); // idempotent; safer than relying on lazy native loading.
-        return new World(new Vector2(config.physics.gravity.x, config.physics.gravity.y), /*doSleep=*/ true);
+        World world = new World(new Vector2(config.physics.gravity.x, config.physics.gravity.y), /*doSleep=*/ true);
+        world.setContactListener(listener);
+        return world;
     }
 
     @Provides
@@ -90,12 +94,14 @@ public class GameModule {
     Engine provideEngine(InputSystem inputSystem,
                          PhysicsSystem physicsSystem,
                          MovementSystem movementSystem,
+                         BlockSpawnSystem blockSpawnSystem,
                          AnimationSystem animationSystem,
                          RenderSystem renderSystem) {
         Engine engine = new PooledEngine();
         engine.addSystem(inputSystem);
         engine.addSystem(physicsSystem);
         engine.addSystem(movementSystem);
+        engine.addSystem(blockSpawnSystem);
         engine.addSystem(animationSystem);
         engine.addSystem(renderSystem);
         return engine;

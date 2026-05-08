@@ -18,6 +18,7 @@ public class ScreenNavigator {
     private final PreferencesScreen preferencesScreen;
     private final LevelPickerScreen levelPickerScreen;
     private final GameScreen gameScreen;
+    private final GameOverScreen gameOverScreen;
 
     @Inject
     public ScreenNavigator(Game game,
@@ -25,13 +26,15 @@ public class ScreenNavigator {
                            MainMenuScreen mainMenuScreen,
                            PreferencesScreen preferencesScreen,
                            LevelPickerScreen levelPickerScreen,
-                           GameScreen gameScreen) {
+                           GameScreen gameScreen,
+                           GameOverScreen gameOverScreen) {
         this.game = game;
         this.loadingScreen = loadingScreen;
         this.mainMenuScreen = mainMenuScreen;
         this.preferencesScreen = preferencesScreen;
         this.levelPickerScreen = levelPickerScreen;
         this.gameScreen = gameScreen;
+        this.gameOverScreen = gameOverScreen;
     }
 
     public void goToLoading() { game.setScreen(loadingScreen); }
@@ -39,6 +42,7 @@ public class ScreenNavigator {
     public void goToPreferences() { game.setScreen(preferencesScreen); }
     public void goToLevelPicker() { game.setScreen(levelPickerScreen); }
     public void goToGame() { game.setScreen(gameScreen); }
+    public void goToGameOver() { game.setScreen(gameOverScreen); }
 
     public void disposeAll() {
         loadingScreen.dispose();
@@ -46,5 +50,6 @@ public class ScreenNavigator {
         preferencesScreen.dispose();
         levelPickerScreen.dispose();
         gameScreen.dispose();
+        gameOverScreen.dispose();
     }
 }

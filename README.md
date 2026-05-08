@@ -16,7 +16,7 @@ just cloning the repository.
 * YAML support
 * Stubbed out screens include loading screen, main menu, preferences and level picker.
 * Support for importing aseprite files for animation easily.
-* Sample game includes playing a moving 2D character that is dodging falling blocks, wired up to Box2D.
+* Sample game includes a moving 2D character dodging falling blocks (touch/click to move; one-block-touch ends the run, score is time survived) wired up to Box2D.
 
 ## Prerequisites
 
@@ -71,10 +71,12 @@ Dagger components and modules live under
   `inject(TheGame)`.
 
 `TheGame.create()` builds the graph with
-`DaggerGameComponent.create().inject(this)`. The component is built
-inside `create()` (not in a static initializer) because providers may
-touch GL or `Gdx.files`, which are only valid after libGDX has
-initialized.
+`DaggerGameComponent.builder().game(this).build().inject(this)`. The
+component is built inside `create()` (not in a static initializer)
+because providers may touch GL or `Gdx.files`, which are only valid
+after libGDX has initialized. The `Game` instance itself is bound into
+the graph via `@BindsInstance` on the component builder so
+`ScreenNavigator` can hold it for `setScreen` calls.
 
 To add an injected service, add a `@Provides` method to `GameModule`
 (or a new `@Module` listed in `GameComponent`) and request it via
@@ -96,10 +98,12 @@ Layout:
   * `VelocityComponent` — `float dx`, `float dy` (pixels/second).
   * `InputComponent` — marker; tagged entities read pointer input each tick.
   * `BodyComponent` — wraps a Box2D `Body`. `PhysicsSystem` writes the body's center back to `PositionComponent` (in pixels, as the texture's bottom-left) each tick.
+  * `BlockComponent` — marker; identifies falling-block entities so the contact listener can recognize player↔block hits.
 * `ecs/system/` — behavior, ordered by priority (lower runs earlier).
   * `InputSystem` (priority -10) drives input-controlled **physics bodies** toward the pointer at constant speed and stops them at the pointer or the screen edge. Family is `Input + Body + Position + Texture`; each tick it clamps `pos.x` to `[0, screenW − spriteW]` (correcting via `body.setTransform(...)` if needed), then either sets `body.setLinearVelocity(±speed/ppm, 0)` or, when within one frame's max travel of the target, snaps the body with `setTransform` and zeros velocity. The snap path uses `setTransform` rather than calibrated velocity because Box2D's fixed timestep can't be aligned with the frame's `dt` — for a kinematic body, teleporting cleanly is the right tool. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
   * `PhysicsSystem` (priority -8) accumulates frame deltas (capped at 0.25s) and runs Box2D `world.step(1/60s, 6, 2)` as many times as fit, then writes each body's center back to `PositionComponent` in pixels (subtracting the texture's half-extents so the result is bottom-left-anchored, the form `RenderSystem` expects).
   * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components. The current demo doesn't use it (the player uses Box2D for motion), but it's kept as the canonical pattern for non-physical entities.
+  * `BlockSpawnSystem` (priority -9) spawns a fresh falling block every 1.5s by delegating to `FallingBlockFactory`; halts when `GameState.gameOver` is true. `reset()` schedules an immediate next spawn (used on session restart).
   * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`.
   * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
 
@@ -111,17 +115,26 @@ tests can substitute mocks — see `InputSystemTest` for the pattern.
 
 The Box2D `World` is provided by Dagger (`GameModule.provideWorld`) and
 created with gravity from `config.physics.gravity`. `Box2D.init()` is
-called inside the provider so native loading is explicit. `TheGame`
-populates the world with three bodies:
+called inside the provider so native loading is explicit, and a
+`GameContactListener` is wired in at the same time. `GameScreen` (on
+each `show()`) tears down any prior session and populates the world:
 
 * A static `EdgeShape` **ground** at `y = 0` spanning the screen.
-* A dynamic `PolygonShape` **falling block** (the animated
-  `block_block` atlas region, with restitution `0.5` so it visibly
-  bounces).
 * A kinematic `PolygonShape` **player** sized to the
   `player1_Flying` sprite. Kinematic means `InputSystem` drives it via
-  `setLinearVelocity`/`setTransform`; the player pushes the block on
-  contact but isn't pushed back by it.
+  `setLinearVelocity`/`setTransform`; the player pushes blocks on
+  contact but isn't pushed back by them.
+* Dynamic **falling blocks** spawned over time by `BlockSpawnSystem`
+  via `FallingBlockFactory` — animated `block_block` atlas region,
+  random x, slight angular velocity, restitution `0.5`. Each block's
+  `Body.userData` holds its `Entity` so the contact listener can match
+  player↔block via component markers (`InputComponent` vs
+  `BlockComponent`).
+
+When the contact listener detects a player↔block touch it sets
+`GameState.gameOver = true`; `GameScreen.render` notices on the next
+frame and navigates to `GameOverScreen`, which displays the elapsed
+time and offers Try Again / Main Menu.
 
 Pixel ↔ meter conversion is centralized: every body is built using
 `config.physics.pixelsPerMeter`, and `PhysicsSystem` does the inverse
@@ -156,8 +169,9 @@ parameters, and registers them. To add a new system:
    priorities to the system constructor if you need deterministic
    ordering.
 
-`TheGame.render()` calls `engine.update(deltaTime)` once per frame; all
-per-frame work belongs in a system, not in `TheGame`.
+`GameScreen.render()` calls `engine.update(deltaTime)` once per frame
+(while it's the active screen); all per-frame gameplay work belongs in
+a system, not in the screen.
 
 ### YAML configuration
 
@@ -169,6 +183,13 @@ title: Game Template
 logo:
   x: 140
   y: 210
+player:
+  speed: 200
+physics:
+  gravity:
+    x: 0
+    y: -9.8
+  pixelsPerMeter: 32
 ```
 
 `ConfigLoader` (in `core/src/main/java/.../config/`) is a thin wrapper
@@ -288,12 +309,16 @@ then hands control to `ScreenNavigator`, which exposes
 * `LoadingScreen` — placeholder with a fixed-duration delay; replace
   the timer with an `AssetManager` poll when you're ready for real
   loading.
-* `MainMenuScreen`, `PreferencesScreen`, `LevelPickerScreen` — Scene2D
-  menus extending `BaseScreen`, which owns a `Stage` + viewport and the
-  standard `show/render/resize/dispose` boilerplate.
-* `GameScreen` — implements `Screen` directly (no Stage). Drives the
-  Ashley engine, builds the player/block/ground entities once on first
-  `show()`, and watches for `ESC` to return to the main menu.
+* `MainMenuScreen`, `PreferencesScreen`, `LevelPickerScreen`,
+  `GameOverScreen` — Scene2D menus extending `BaseScreen`, which owns a
+  `Stage` + viewport and the standard `show/render/resize/dispose`
+  boilerplate.
+* `GameScreen` — also extends `BaseScreen` (uses the stage for an HUD
+  score label) but overrides `render` to draw the engine first, then
+  the HUD on top. `show()` starts a fresh session: clears engine
+  entities, destroys all world bodies, resets `GameState` and the spawn
+  timer, then rebuilds ground + player. Watches for `gameState.gameOver`
+  to navigate to `GameOverScreen`, and `ESC` to return to the main menu.
 
 UI uses the bundled `assets/ui/uiskin.json` (provided as
 `@Singleton Skin` in `GameModule`). Each menu screen builds its widget
