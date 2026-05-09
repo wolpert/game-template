@@ -125,7 +125,7 @@ spotless {
 // here and document why. The aim is "new code is checked", not "every legacy file is rewritten."
 tasks.withType<JavaCompile>().configureEach {
     if (name == "compileJava") {
-        options.errorprone.isEnabled.set(true)
+        options.errorprone.enabled.set(true)
         options.errorprone.disableWarningsInGeneratedCode.set(true)
         // Avoid running Error Prone on Dagger-generated sources (annotationProcessor output).
         options.errorprone.excludedPaths.set(".*/build/generated/.*")
@@ -151,6 +151,6 @@ tasks.withType<JavaCompile>().configureEach {
     } else {
         // Skip Error Prone for tests + generated-source compilation — the lint signal there is
         // noisier than the value, and we want :test to stay fast.
-        options.errorprone.isEnabled.set(false)
+        options.errorprone.enabled.set(false)
     }
 }
