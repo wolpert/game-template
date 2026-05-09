@@ -8,20 +8,20 @@ ashley = "1.7.4"
 graalHelper = "2.0.1"
 
 # DI
-dagger = "2.52"
+dagger = "2.59.2"
 
 # Config / serialization
-snakeYaml = "2.3"
+snakeYaml = "2.6"
 
 # Test
-junit = "5.11.4"
-mockito = "5.14.2"
+junit = "6.0.3"
+mockito = "5.23.0"
 
 # LWJGL constraint floor (avoid issues on Java 25+)
 lwjgl3 = "3.4.1"
 
 # Android
-agp = "8.13.2"
+agp = "9.2.1"
 desugar = "2.1.5"
 androidCompileSdk = "35"
 androidTargetSdk = "35"
@@ -33,9 +33,9 @@ construo = "2.1.0"
 # is not available. The version literal in settings.gradle.kts MUST be kept in sync with this entry.
 foojayResolver = "1.0.0"
 graalNative = "1.1.0"
-spotless = "7.0.2"
-errorprone = "4.1.0"
-errorproneCore = "2.36.0"
+spotless = "8.4.0"
+errorprone = "5.1.0"
+errorproneCore = "2.49.0"
 
 [libraries]
 # libGDX core
