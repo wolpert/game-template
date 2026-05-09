@@ -4,11 +4,20 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.codeheadsystems.game.AppInfo;
 import com.codeheadsystems.game.TheGame;
+import org.lwjgl.glfw.GLFW;
 
 /** Launches the desktop (LWJGL3) application. */
 public class Lwjgl3Launcher {
     public static void main(String[] args) {
         if (StartupHelper.startNewJvmIfRequired()) return; // This handles macOS support and helps on Windows.
+        // Force GLFW to use X11 (XWayland) on Linux when X11 is available. libGDX's Lwjgl3Graphics
+        // calls glfwGetWindowPos from getMonitor() / getDensity(), which Wayland does not support
+        // (throws GLFW_FEATURE_UNAVAILABLE). The init hint must be set before glfwInit() runs
+        // inside Lwjgl3Application's constructor.
+        if (System.getProperty("os.name", "").toLowerCase().contains("linux")
+                && GLFW.glfwPlatformSupported(GLFW.GLFW_PLATFORM_X11)) {
+            GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_X11);
+        }
         createApplication();
     }
 
