@@ -9,6 +9,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.codeheadsystems.game.di.Sample;
+import com.codeheadsystems.game.highscore.HighscoreReader;
+import java.util.Optional;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -17,16 +20,28 @@ import javax.inject.Singleton;
 public class MainMenuScreen extends BaseScreen {
 
     private final Skin skin;
+    private final Optional<HighscoreReader> highscoreReader;
+    private final Label bestLabel;
     private boolean quitDialogOpen;
 
     @Inject
-    public MainMenuScreen(Skin skin, Provider<ScreenNavigator> nav) {
+    public MainMenuScreen(Skin skin,
+                          Provider<ScreenNavigator> nav,
+                          @Sample Optional<HighscoreReader> highscoreReader) {
         this.skin = skin;
+        this.highscoreReader = highscoreReader;
         Table table = new Table();
         table.setFillParent(true);
         table.defaults().pad(6).width(220).height(48);
 
         table.add(new Label("Game Template", skin)).padBottom(20).row();
+
+        // The "Best:" line only renders when a sample-side HighscoreReader is wired (i.e.
+        // SampleModule is present). Empty when the demo is stripped, mirroring the existing
+        // @Sample Optional<Provider<Screen>> pattern that hides the "Dodge Sample" button.
+        bestLabel = new Label("", skin);
+        bestLabel.setVisible(false);
+        table.add(bestLabel).padBottom(20).row();
 
         TextButton play = new TextButton("Play", skin);
         play.addListener(new ClickListener() {
@@ -56,6 +71,23 @@ public class MainMenuScreen extends BaseScreen {
         table.add(quit).row();
 
         stage.addActor(table);
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        // Refresh the best-line on every entry — a fresh game-over may have just bumped it.
+        if (highscoreReader.isPresent()) {
+            float best = highscoreReader.get().getBest();
+            if (best > 0f) {
+                bestLabel.setText(String.format("Best: %.1fs", best));
+                bestLabel.setVisible(true);
+            } else {
+                bestLabel.setVisible(false);
+            }
+        } else {
+            bestLabel.setVisible(false);
+        }
     }
 
     /**

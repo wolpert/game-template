@@ -2,11 +2,8 @@ import io.github.fourlastor.construo.Target
 import java.util.Locale
 
 val appName: String by extra
-val projectVersion: String by project
-val gdxVersion: String by project
-val lwjgl3Version: String by project
-val graalHelperVersion: String by project
 val enableGraalNative: String by project
+val projectVersion = project.version.toString()
 
 buildscript {
     repositories {
@@ -14,14 +11,14 @@ buildscript {
     }
     dependencies {
         if (project.findProperty("enableGraalNative") == "true") {
-            classpath("org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:1.1.0")
+            classpath(libs.graalvm.native.gradle.plugin)
         }
     }
 }
 
 plugins {
     application
-    id("io.github.fourlastor.construo") version "2.1.0"
+    alias(libs.plugins.construo)
 }
 
 sourceSets["main"].resources.srcDir(rootProject.file("assets"))
@@ -42,26 +39,26 @@ if (JavaVersion.current().isJava9Compatible) {
 }
 
 dependencies {
-    implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion")
-    implementation("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop")
-    implementation("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop")
-    implementation("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    implementation(libs.gdx.backend.lwjgl3)
+    implementation(variantOf(libs.gdx.box2d.platform) { classifier("natives-desktop") })
+    implementation(variantOf(libs.gdx.freetype.platform) { classifier("natives-desktop") })
+    implementation(variantOf(libs.gdx.platform) { classifier("natives-desktop") })
     implementation(project(":core"))
 
     if (enableGraalNative == "true") {
-        implementation("io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion")
-        implementation("io.github.berstanio:gdx-svmhelper-extension-box2d:$graalHelperVersion")
-        implementation("io.github.berstanio:gdx-svmhelper-extension-freetype:$graalHelperVersion")
+        implementation(libs.gdx.svmhelper.backend.lwjgl3)
+        implementation(libs.gdx.svmhelper.extension.box2d)
+        implementation(libs.gdx.svmhelper.extension.freetype)
     }
 
-    // Forces LWJGL3 to use at least $lwjgl3Version, currently 3.4.1, to avoid problems on Java 25 and up.
+    // Forces LWJGL3 to use at least the catalog-pinned version, currently 3.4.1, to avoid problems on Java 25 and up.
     constraints {
-        implementation("org.lwjgl:lwjgl:$lwjgl3Version")
-        implementation("org.lwjgl:lwjgl-glfw:$lwjgl3Version")
-        implementation("org.lwjgl:lwjgl-jemalloc:$lwjgl3Version")
-        implementation("org.lwjgl:lwjgl-openal:$lwjgl3Version")
-        implementation("org.lwjgl:lwjgl-opengl:$lwjgl3Version")
-        implementation("org.lwjgl:lwjgl-stb:$lwjgl3Version")
+        implementation(libs.lwjgl)
+        implementation(libs.lwjgl.glfw)
+        implementation(libs.lwjgl.jemalloc)
+        implementation(libs.lwjgl.openal)
+        implementation(libs.lwjgl.opengl)
+        implementation(libs.lwjgl.stb)
     }
 }
 

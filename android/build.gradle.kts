@@ -1,15 +1,17 @@
 import java.util.Properties
 
 val appName: String by extra
-val gdxVersion: String by project
 
 plugins {
+    // AGP is brought in via the root buildscript classpath (see classpath(libs.android.gradle.plugin)
+    // in the root build.gradle.kts); we apply it here without a version since the version is
+    // resolved transitively. The catalog still owns the AGP version coordinate.
     id("com.android.application")
 }
 
 android {
     namespace = "com.codeheadsystems.game"
-    compileSdk = 35
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
     sourceSets {
         getByName("main") {
             manifest.srcFile("AndroidManifest.xml")
@@ -35,8 +37,8 @@ android {
     }
     defaultConfig {
         applicationId = "com.codeheadsystems.game"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
@@ -61,22 +63,22 @@ repositories {
 val natives: Configuration by configurations.creating
 
 dependencies {
-    "coreLibraryDesugaring"("com.android.tools:desugar_jdk_libs:2.1.5")
-    "implementation"("com.badlogicgames.gdx:gdx-backend-android:$gdxVersion")
+    "coreLibraryDesugaring"(libs.android.desugar.jdk.libs)
+    "implementation"(libs.gdx.backend.android)
     "implementation"(project(":core"))
 
-    natives("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a")
-    natives("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a")
-    natives("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86")
-    natives("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86_64")
-    natives("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a")
-    natives("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a")
-    natives("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86")
-    natives("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64")
-    natives("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a")
-    natives("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a")
-    natives("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86")
-    natives("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64")
+    natives(variantOf(libs.gdx.box2d.platform) { classifier("natives-arm64-v8a") })
+    natives(variantOf(libs.gdx.box2d.platform) { classifier("natives-armeabi-v7a") })
+    natives(variantOf(libs.gdx.box2d.platform) { classifier("natives-x86") })
+    natives(variantOf(libs.gdx.box2d.platform) { classifier("natives-x86_64") })
+    natives(variantOf(libs.gdx.freetype.platform) { classifier("natives-arm64-v8a") })
+    natives(variantOf(libs.gdx.freetype.platform) { classifier("natives-armeabi-v7a") })
+    natives(variantOf(libs.gdx.freetype.platform) { classifier("natives-x86") })
+    natives(variantOf(libs.gdx.freetype.platform) { classifier("natives-x86_64") })
+    natives(variantOf(libs.gdx.platform) { classifier("natives-arm64-v8a") })
+    natives(variantOf(libs.gdx.platform) { classifier("natives-armeabi-v7a") })
+    natives(variantOf(libs.gdx.platform) { classifier("natives-x86") })
+    natives(variantOf(libs.gdx.platform) { classifier("natives-x86_64") })
 }
 
 // Called every time gradle gets executed; takes the native dependencies of

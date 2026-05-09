@@ -23,6 +23,8 @@ public class GameOverScreen extends BaseScreen {
     private final Provider<ScreenNavigator> nav;
     private final Label headlineLabel;
     private final Label detailLabel;
+    private final Label bestLabel;
+    private final Label newRecordLabel;
     private final TextButton tryAgain;
 
     @Inject
@@ -39,6 +41,14 @@ public class GameOverScreen extends BaseScreen {
 
         detailLabel = new Label("", skin);
         table.add(detailLabel).padBottom(20).row();
+
+        // bestSec is shown when populated (>0) — the empty scaffold GameScreen doesn't fill it,
+        // so a session that didn't track a record naturally hides this row.
+        bestLabel = new Label("", skin);
+        table.add(bestLabel).padBottom(6).row();
+
+        newRecordLabel = new Label("", skin);
+        table.add(newRecordLabel).padBottom(20).row();
 
         tryAgain = new TextButton("Try Again", skin);
         tryAgain.addListener(new ClickListener() {
@@ -66,6 +76,20 @@ public class GameOverScreen extends BaseScreen {
         super.show();
         headlineLabel.setText(result.headline);
         detailLabel.setText(result.detail);
+        if (result.bestSec > 0f) {
+            bestLabel.setText(String.format("Best: %.1fs", result.bestSec));
+            bestLabel.setVisible(true);
+        } else {
+            bestLabel.setText("");
+            bestLabel.setVisible(false);
+        }
+        if (result.newRecord) {
+            newRecordLabel.setText("+ NEW RECORD");
+            newRecordLabel.setVisible(true);
+        } else {
+            newRecordLabel.setText("");
+            newRecordLabel.setVisible(false);
+        }
         tryAgain.setDisabled(!result.retryAvailable);
         tryAgain.setVisible(result.retryAvailable);
     }

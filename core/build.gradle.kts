@@ -1,42 +1,55 @@
+import net.ltgt.gradle.errorprone.errorprone
+
+plugins {
+    // Static-analysis stack chosen pragmatically (T2): Spotless for hygiene-level format checks
+    // (trailing whitespace + final-newline + no tabs — won't reformat the existing 69 files), and
+    // Error Prone at default severity for new-bug detection. NullAway is intentionally NOT
+    // included — see the C11 contradiction in TODO.md (would force `@Nullable` annotations on the
+    // pure-data ECS components, conflicting with their "plain public fields" ergonomics).
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.errorprone)
+}
+
 val appName: String by extra
-val gdxVersion: String by project
-val ashleyVersion: String by project
-val daggerVersion: String by project
-val junitVersion: String by project
-val mockitoVersion: String by project
-val snakeYamlVersion: String by project
-val graalHelperVersion: String by project
 val enableGraalNative: String by project
 
 eclipse.project.name = "$appName-core"
 
 dependencies {
-    "api"("com.badlogicgames.ashley:ashley:$ashleyVersion")
-    "api"("com.badlogicgames.gdx:gdx-box2d:$gdxVersion")
-    "api"("com.badlogicgames.gdx:gdx-freetype:$gdxVersion")
-    "api"("com.badlogicgames.gdx:gdx:$gdxVersion")
+    "api"(libs.ashley)
+    "api"(libs.gdx.box2d)
+    "api"(libs.gdx.freetype)
+    "api"(libs.gdx)
 
-    "api"("com.google.dagger:dagger:$daggerVersion")
-    "annotationProcessor"("com.google.dagger:dagger-compiler:$daggerVersion")
+    "api"(libs.dagger)
+    "annotationProcessor"(libs.dagger.compiler)
 
-    "api"("org.yaml:snakeyaml:$snakeYamlVersion")
+    "api"(libs.snakeyaml)
 
     if (enableGraalNative == "true") {
-        "implementation"("io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion")
+        "implementation"(libs.gdx.svmhelper.annotations)
     }
 
-    "testImplementation"("org.junit.jupiter:junit-jupiter:$junitVersion")
-    "testImplementation"("org.mockito:mockito-core:$mockitoVersion")
-    "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+    "testImplementation"(libs.junit.jupiter)
+    "testImplementation"(libs.mockito.core)
+    "testRuntimeOnly"(libs.junit.platform.launcher)
     // Native libs so tests can construct real Box2D Worlds/Bodies — World's class init touches JNI.
-    "testRuntimeOnly"("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
-    "testRuntimeOnly"("com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop")
+    "testRuntimeOnly"(variantOf(libs.gdx.platform) { classifier("natives-desktop") })
+    "testRuntimeOnly"(variantOf(libs.gdx.box2d.platform) { classifier("natives-desktop") })
+
+    // Headless libGDX backend for the integration test in
+    // core/src/test/java/.../integration/SessionLifecycleTest.java (T3). Provides
+    // HeadlessApplication so screen lifecycle / Gdx.app.getPreferences() work GL-less.
+    "testImplementation"(libs.gdx.backend.headless)
+
+    // Error Prone analyzer — applied to the production javac task only.
+    "errorprone"(libs.errorprone.core)
 }
 
 // Load Mockito as an explicit JVM agent so it doesn't self-attach (deprecated on JDK 21+).
 val mockitoAgent: Configuration = configurations.create("mockitoAgent")
 dependencies {
-    mockitoAgent("org.mockito:mockito-core:$mockitoVersion") { isTransitive = false }
+    mockitoAgent(libs.mockito.core) { isTransitive = false }
 }
 
 tasks.named<Test>("test") {
@@ -83,4 +96,61 @@ sourceSets.named("main") {
 
 tasks.named<JavaCompile>("compileJava") {
     dependsOn(generateAppInfo)
+}
+
+// --- Static analysis (T2) -----------------------------------------------------------------
+//
+// Pragmatic config: don't reformat existing code, just gate on hygiene rules (trailing space,
+// final newline, no tabs). Adopters can swap in palantirJavaFormat() / googleJavaFormat() later
+// once they're ready to take the one-time `./gradlew :core:spotlessApply` reformatting churn.
+spotless {
+    java {
+        target("src/main/java/**/*.java", "src/test/java/**/*.java")
+        // Skip Dagger-generated and AppInfo-generated sources.
+        targetExclude("**/build/generated/**")
+        trimTrailingWhitespace()
+        endWithNewline()
+        // Tabs would silently sneak in if anyone's editor is misconfigured — the rest of the
+        // codebase is 4-space, so reject them outright.
+        leadingTabsToSpaces(4)
+    }
+}
+
+// Error Prone is applied to production javac only (test javac runs noisier patterns intentionally
+// — Mockito stubbing, suppressed-return-values, etc.). At default severity we get a small set of
+// real-bug checks; explicit `:OFF` flags below silence checks that would force rewriting existing
+// idiomatic code. Tune these up over time, not on day one.
+//
+// Stopping rule (per T2): if a check explodes into >10 violations across the repo, disable it
+// here and document why. The aim is "new code is checked", not "every legacy file is rewritten."
+tasks.withType<JavaCompile>().configureEach {
+    if (name == "compileJava") {
+        options.errorprone.isEnabled.set(true)
+        options.errorprone.disableWarningsInGeneratedCode.set(true)
+        // Avoid running Error Prone on Dagger-generated sources (annotationProcessor output).
+        options.errorprone.excludedPaths.set(".*/build/generated/.*")
+        options.errorprone.disable(
+            // Pure-data ECS components (e.g. PositionComponent) intentionally use `public float x`
+            // for direct access from systems — this is a project-wide pattern, not a leak.
+            "MutablePublicArray",
+            // Float equality checks against 0f are common in time-accumulator code (Hitstop, etc.).
+            "FloatingPointLiteralPrecision",
+            // We don't ship Javadoc; package summaries aren't useful here.
+            "MissingSummary",
+            "EmptyBlockTag",
+            // The codebase uses `@Provides static EntitySystem bindX(X s) { return s; }` as the
+            // multibinding pattern in CoreModule + SampleModule (12 sites). Switching all to
+            // `@Binds abstract` is a stylistic refactor, not a bug fix; per T2 stopping rule
+            // (>10 violations) we disable rather than rewrite.
+            "UseBinds",
+            // TintFlash deliberately exposes its identity-keyed map as `Map<Entity, Flash>` to
+            // emphasise the public contract ("any Map") while using IdentityHashMap internally
+            // for the by-reference lookup semantics — flagged as a single-site false positive.
+            "IdentityHashMapUsage"
+        )
+    } else {
+        // Skip Error Prone for tests + generated-source compilation — the lint signal there is
+        // noisier than the value, and we want :test to stay fast.
+        options.errorprone.isEnabled.set(false)
+    }
 }

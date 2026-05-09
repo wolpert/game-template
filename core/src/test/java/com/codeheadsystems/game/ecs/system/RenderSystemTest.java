@@ -1,12 +1,16 @@
 package com.codeheadsystems.game.ecs.system;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.PooledEngine;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
@@ -34,14 +38,15 @@ class RenderSystemTest {
 
         engine.update(0.016f);
 
+        // RenderSystem also calls setColor() to apply per-entity tints; assert begin/draw/end
+        // ordering and let the tint plumbing be tint-system-agnostic (covered by TintFlashTest).
         InOrder order = inOrder(batch);
         order.verify(batch).begin();
-        // Origin = center of region; full draw signature is used so rotation is applied uniformly.
         order.verify(batch).draw(bgRegion, 10f, 20f, 16f, 16f, 32f, 32f, 1f, 1f, 0f);
         order.verify(batch).draw(midRegion, 30f, 40f, 16f, 16f, 32f, 32f, 1f, 1f, 45f);
         order.verify(batch).draw(fgRegion, 50f, 60f, 16f, 16f, 32f, 32f, 1f, 1f, 0f);
         order.verify(batch).end();
-        order.verifyNoMoreInteractions();
+        verify(batch, atLeastOnce()).setColor(any(Color.class));
     }
 
     private static TextureRegion mockRegion(int w, int h) {

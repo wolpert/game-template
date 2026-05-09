@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.codeheadsystems.game.assets.LoadableAsset;
 import com.codeheadsystems.game.di.Sample;
 import com.codeheadsystems.game.ecs.InputGate;
+import com.codeheadsystems.game.highscore.HighscoreReader;
+import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ElementsIntoSet;
@@ -32,6 +34,14 @@ public abstract class SampleModule {
     static Supplier<String> provideSampleDebugLine(GameState state) {
         return () -> state.phase.name();   // shows up in DebugOverlay's "phase: %s" slot
     }
+
+    /**
+     * Binds the sample's {@link HighscoreStore} into the {@code @Sample} optional slot declared
+     * in {@code CoreModule}. {@code MainMenuScreen} consumes the {@code Optional<HighscoreReader>}
+     * — present when this module is wired in, empty when the sample is stripped.
+     */
+    @Binds @Sample @Singleton
+    abstract HighscoreReader bindSampleHighscoreReader(HighscoreStore store);
 
     /**
      * Lifecycle foot-gun: throws {@code GdxRuntimeException} if {@link AssetManager} hasn't yet

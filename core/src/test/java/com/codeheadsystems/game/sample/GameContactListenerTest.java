@@ -13,6 +13,9 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.codeheadsystems.game.ecs.component.InputComponent;
+import com.codeheadsystems.game.render.CameraShake;
+import com.codeheadsystems.game.render.Hitstop;
+import com.codeheadsystems.game.render.TintFlash;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +32,18 @@ class GameContactListenerTest {
         Box2D.init();
     }
 
+    private CameraShake cameraShake;
+    private Hitstop hitstop;
+    private TintFlash tintFlash;
+
     @BeforeEach
     void setUp() {
         state = new GameState();
+        cameraShake = new CameraShake();
+        hitstop = new Hitstop();
+        tintFlash = new TintFlash();
         world = new World(new Vector2(0f, 0f), true);
-        world.setContactListener(new GameContactListener(state));
+        world.setContactListener(new GameContactListener(state, cameraShake, hitstop, tintFlash));
     }
 
     @AfterEach

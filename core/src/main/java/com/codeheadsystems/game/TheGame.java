@@ -4,9 +4,9 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.codeheadsystems.game.di.DaggerGameComponent;
+import com.codeheadsystems.game.physics.PhysicsWorld;
 import com.codeheadsystems.game.screens.ScreenNavigator;
 import javax.inject.Inject;
 
@@ -23,7 +23,7 @@ public class TheGame extends Game {
 
     @Inject SpriteBatch batch;
     @Inject AssetManager assets;
-    @Inject World world;
+    @Inject PhysicsWorld physicsWorld;
     @Inject Skin skin;
     @Inject ScreenNavigator nav;
 
@@ -43,7 +43,7 @@ public class TheGame extends Game {
         nav.disposeAll();
         batch.dispose();
         assets.dispose();
-        world.dispose();
+        physicsWorld.dispose();
         skin.dispose();
     }
 }

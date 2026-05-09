@@ -10,8 +10,6 @@ import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Box2D;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.GdxRuntimeException;
@@ -27,6 +25,9 @@ import com.codeheadsystems.game.ecs.system.MovementSystem;
 import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
 import com.codeheadsystems.game.ecs.system.WrapAroundSystem;
+import com.codeheadsystems.game.highscore.HighscoreReader;
+import com.codeheadsystems.game.physics.PhysicsWorld;
+import com.codeheadsystems.game.render.TintFlash;
 import dagger.BindsOptionalOf;
 import dagger.Module;
 import dagger.Provides;
@@ -51,6 +52,13 @@ public abstract class CoreModule {
     @BindsOptionalOf @Sample abstract Supplier<String> optionalSampleDebugLine();
 
     @BindsOptionalOf @Sample abstract com.badlogic.gdx.Screen optionalSampleScreen();
+
+    /**
+     * Optional sample-side highscore source. {@code MainMenuScreen} injects the
+     * {@link Optional} and only renders a "Best:" line when a {@link HighscoreReader} is bound
+     * (i.e. {@code SampleModule} is wired in). Removing the demo cleanly drops the line.
+     */
+    @BindsOptionalOf @Sample abstract HighscoreReader optionalSampleHighscoreReader();
 
     /**
      * Default scaffold binding: input is always active. Demo / sample modules can rebind
@@ -146,11 +154,16 @@ public abstract class CoreModule {
         return Gdx.graphics;
     }
 
+    /**
+     * Single source of truth for the Box2D world: {@link PhysicsWorld} owns the {@link World} +
+     * its {@link com.badlogic.gdx.physics.box2d.ContactListener} as a unit. Raw-world consumers
+     * (e.g. {@link PhysicsSystem}) get the world via this delegate — there is one constructed
+     * {@code World} per app, regardless of which form a consumer asks for.
+     */
     @Provides
     @Singleton
-    static World provideWorld(GameConfig config) {
-        Box2D.init(); // idempotent; safer than relying on lazy native loading.
-        return new World(new Vector2(config.physics.gravity.x, config.physics.gravity.y), /*doSleep=*/ true);
+    static World provideWorld(PhysicsWorld physicsWorld) {
+        return physicsWorld.getWorld();
     }
 
     @Provides
@@ -178,6 +191,9 @@ public abstract class CoreModule {
 
     @Provides @Singleton @IntoSet
     static EntitySystem bindAnimationSystem(AnimationSystem s) { return s; }
+
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindTintFlashSystem(TintFlash s) { return s; }
 
     @Provides @Singleton @IntoSet
     static EntitySystem bindRenderSystem(RenderSystem s) { return s; }

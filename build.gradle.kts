@@ -9,7 +9,7 @@ buildscript {
         maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.13.2")
+        classpath(libs.android.gradle.plugin)
     }
 }
 
@@ -51,8 +51,16 @@ configure(subprojects - project(":android")) {
     }
 }
 
+// `libs` accessor isn't available in cross-project blocks (subprojects/allprojects), so resolve
+// the projectVersion via the runtime VersionCatalogsExtension API at root scope and reuse below.
+val projectVersionFromCatalog: String =
+    extensions.getByType<VersionCatalogsExtension>()
+        .named("libs")
+        .findVersion("projectVersion").orElseThrow { IllegalStateException("projectVersion missing in libs.versions.toml") }
+        .requiredVersion
+
 subprojects {
-    version = property("projectVersion") as String
+    version = projectVersionFromCatalog
     extra["appName"] = "game-template"
     repositories {
         mavenCentral()
@@ -93,9 +101,8 @@ repositories {
 
 val texturePacker: Configuration = configurations.create("texturePacker")
 dependencies {
-    val gdxVersion: String by project
-    texturePacker("com.badlogicgames.gdx:gdx-tools:$gdxVersion")
-    texturePacker("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    texturePacker(libs.gdx.tools)
+    texturePacker(variantOf(libs.gdx.platform) { classifier("natives-desktop") })
 }
 
 tasks.register("exportAseprite") {

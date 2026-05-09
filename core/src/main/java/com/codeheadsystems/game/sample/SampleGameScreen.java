@@ -4,6 +4,9 @@ import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -12,12 +15,17 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.EdgeShape;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
-import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Container;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.debug.DebugOverlay;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
@@ -28,7 +36,8 @@ import com.codeheadsystems.game.ecs.component.TextureComponent;
 import com.codeheadsystems.game.ecs.component.VelocityComponent;
 import com.codeheadsystems.game.ecs.component.WrapAroundComponent;
 import com.codeheadsystems.game.flow.SessionResult;
-import com.codeheadsystems.game.screens.BaseScreen;
+import com.codeheadsystems.game.physics.PhysicsWorld;
+import com.codeheadsystems.game.render.Hitstop;
 import com.codeheadsystems.game.screens.ScreenNavigator;
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -36,14 +45,17 @@ import javax.inject.Singleton;
 
 /**
  * The dodge demo's playable screen — input-driven kinematic player evading dynamic blocks spawned
- * by {@link BlockSpawnSystem}. This is the demo's own game screen, distinct from the template's
- * empty {@code com.codeheadsystems.game.screens.GameScreen} scaffold; deleting the
- * {@code sample/} package strips it without affecting the scaffold. Each {@link #show()} starts a
- * fresh session — entities cleared, world bodies destroyed, score reset — so re-entering after
- * game over restarts cleanly.
+ * by {@link BlockSpawnSystem}. Implements {@link Screen} directly (not via {@code BaseScreen})
+ * because gameplay is Ashley/Box2D-driven, not Scene2D — the small Scene2D {@link Stage} here is
+ * reserved for the HUD and the pause overlay.
+ *
+ * <p>Each {@link #show()} starts a fresh session — entities cleared, world bodies destroyed, score
+ * reset — so re-entering after game over restarts cleanly. The pause state lives on
+ * {@link GameState}; while paused, {@code engine.update} receives a delta of zero so Box2D's
+ * accumulator never advances, and a Scene2D overlay is drawn over the last frame.
  */
 @Singleton
-public class SampleGameScreen extends BaseScreen {
+public class SampleGameScreen implements Screen {
 
     private static final String PLAYER_FLYING = "player1_Flying";
     private static final float PLAYER_FRAME_DURATION = 0.1f;
@@ -58,7 +70,7 @@ public class SampleGameScreen extends BaseScreen {
     private final Engine engine;
     private final Texture logoTexture;
     private final TextureAtlas atlas;
-    private final World world;
+    private final PhysicsWorld physicsWorld;
     private final GameConfig config;
     private final GameState state;
     private final BlockSpawnSystem spawner;
@@ -66,16 +78,43 @@ public class SampleGameScreen extends BaseScreen {
     private final DebugOverlay debugOverlay;
     private final SessionResult result;
     private final GameContactListener contactListener;
+    private final HighscoreStore highscores;
+    private final Hitstop hitstop;
+    private final Skin skin;
 
+    /** HUD + pause overlay both live on this Stage. The pause overlay starts hidden. */
+    private final Stage stage;
     private final Label scoreLabel;
-    /** Reused across session restarts to avoid per-restart allocation. */
-    private final Array<Body> bodiesScratch = new Array<>();
+    private final Container<Table> pauseOverlay;
+    /** Top-right pause button — visible during play, hidden while paused. */
+    private final Container<TextButton> pauseButtonContainer;
+
+    /** True after we've populated SessionResult once for this game-over so we don't double-record. */
+    private boolean gameOverHandled;
+
+    private final InputAdapter keyAdapter = new InputAdapter() {
+        @Override
+        public boolean keyDown(int keycode) {
+            if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.BACK) {
+                if (state.isPaused()) {
+                    resumeGame();
+                } else if (state.canPause()) {
+                    pauseGame();
+                } else {
+                    // GAME_OVER / DYING — fall back to leaving the demo entirely.
+                    nav.get().goToMainMenu();
+                }
+                return true;
+            }
+            return false;
+        }
+    };
 
     @Inject
     public SampleGameScreen(Engine engine,
                             Texture logoTexture,
                             TextureAtlas atlas,
-                            World world,
+                            PhysicsWorld physicsWorld,
                             GameConfig config,
                             GameState state,
                             BlockSpawnSystem spawner,
@@ -83,11 +122,13 @@ public class SampleGameScreen extends BaseScreen {
                             DebugOverlay debugOverlay,
                             SessionResult result,
                             GameContactListener contactListener,
+                            HighscoreStore highscores,
+                            Hitstop hitstop,
                             Skin skin) {
         this.engine = engine;
         this.logoTexture = logoTexture;
         this.atlas = atlas;
-        this.world = world;
+        this.physicsWorld = physicsWorld;
         this.config = config;
         this.state = state;
         this.spawner = spawner;
@@ -95,6 +136,11 @@ public class SampleGameScreen extends BaseScreen {
         this.debugOverlay = debugOverlay;
         this.result = result;
         this.contactListener = contactListener;
+        this.highscores = highscores;
+        this.hitstop = hitstop;
+        this.skin = skin;
+
+        this.stage = new Stage(new ScreenViewport());
 
         scoreLabel = new Label("", skin);
         Table hud = new Table();
@@ -102,72 +148,172 @@ public class SampleGameScreen extends BaseScreen {
         hud.top().left().pad(10);
         hud.add(scoreLabel);
         stage.addActor(hud);
+
+        // Pause button — top-right; small enough not to crowd the HUD, big enough for touch.
+        TextButton pauseBtn = new TextButton("Pause", skin);
+        pauseBtn.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (state.isPaused()) resumeGame();
+                else if (state.canPause()) pauseGame();
+            }
+        });
+        pauseButtonContainer = new Container<>(pauseBtn);
+        pauseButtonContainer.setFillParent(true);
+        pauseButtonContainer.top().right().pad(10);
+        pauseButtonContainer.minWidth(96).minHeight(48);
+        stage.addActor(pauseButtonContainer);
+
+        pauseOverlay = buildPauseOverlay();
+        pauseOverlay.setVisible(false);
+        stage.addActor(pauseOverlay);
+    }
+
+    /**
+     * Pause overlay: a translucent backdrop + Resume / Quit-to-menu buttons. Construction
+     * happens once and is toggled by {@link #pauseGame()} / {@link #resumeGame()}.
+     */
+    private Container<Table> buildPauseOverlay() {
+        Table panel = new Table();
+        panel.defaults().pad(6).width(220).height(48);
+        panel.add(new Label("Paused", skin)).padBottom(20).row();
+
+        TextButton resume = new TextButton("Resume", skin);
+        resume.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                resumeGame();
+            }
+        });
+        panel.add(resume).row();
+
+        TextButton quit = new TextButton("Quit to Menu", skin);
+        quit.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                nav.get().goToMainMenu();
+            }
+        });
+        panel.add(quit).row();
+
+        Container<Table> wrap = new Container<>(panel);
+        wrap.setFillParent(true);
+        wrap.center();
+        // Skin's "default" drawable is reused as a translucent backdrop — close enough without
+        // shipping a dedicated nine-patch in the atlas.
+        return wrap;
     }
 
     @Override
     public void show() {
-        // We don't want the stage to consume pointer input — InputSystem polls Gdx.input directly.
-        Gdx.input.setInputProcessor(null);
+        // Stage takes input first (so pause-button + overlay buttons receive clicks), then the
+        // key adapter handles ESC/BACK toggling. InputSystem polls Gdx.input directly, so it
+        // doesn't need to be in this multiplexer.
+        Gdx.input.setCatchKey(Input.Keys.BACK, true);
+        InputMultiplexer mux = new InputMultiplexer();
+        mux.addProcessor(stage);
+        mux.addProcessor(keyAdapter);
+        Gdx.input.setInputProcessor(mux);
         startNewSession();
     }
 
     private void startNewSession() {
-        // Tear down any prior session: entities first (so removal listeners run), then bodies.
-        engine.removeAllEntities();
-        bodiesScratch.clear();
-        world.getBodies(bodiesScratch);
-        for (Body b : bodiesScratch) {
-            world.destroyBody(b);
-        }
-        bodiesScratch.clear();
+        // Single-call session reset — PhysicsWorld owns the bodies+entities ordering so we don't
+        // duplicate the dance here.
+        physicsWorld.clearSession(engine);
 
         state.reset();
         spawner.reset();
+        gameOverHandled = false;
+        pauseOverlay.setVisible(false);
+        pauseButtonContainer.setVisible(true);
 
         // Install the demo's contact listener on every entry — idempotent, and keeps
         // the World provider scaffold-pure (no demo-specific knowledge).
-        world.setContactListener(contactListener);
+        physicsWorld.setContactListener(contactListener);
 
         createGroundBody();
         engine.addEntity(buildBackground());
         engine.addEntity(buildPlayer());
     }
 
+    private void pauseGame() {
+        if (!state.canPause()) return;
+        state.pause();
+        pauseOverlay.setVisible(true);
+        pauseButtonContainer.setVisible(false);
+    }
+
+    private void resumeGame() {
+        if (!state.isPaused()) return;
+        state.resume();
+        pauseOverlay.setVisible(false);
+        pauseButtonContainer.setVisible(true);
+    }
+
     @Override
     public void render(float delta) {
+        // Wall-clock time always advances the hitstop timer so a freeze always lifts after its
+        // requested duration regardless of frame rate.
+        hitstop.tick(delta);
+
         if (state.isPlaying()) {
             state.elapsedSec += delta;
         }
         scoreLabel.setText(String.format("HP: %d   Time: %.1f", Math.max(0, state.hp), state.elapsedSec));
 
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
-        engine.update(delta);
+
+        // Pause halts the ECS; hitstop scales it temporarily. Either way, Box2D's accumulator
+        // sees zero (or unscaled) delta and won't tick during a freeze/pause.
+        float scaledDelta = state.isPaused() ? 0f : delta * hitstop.getEngineDeltaScale();
+        engine.update(scaledDelta);
         stage.act(delta);
         stage.draw();
         debugOverlay.render(delta);
 
-        if (state.isGameOver()) {
+        if (state.isGameOver() && !gameOverHandled) {
+            gameOverHandled = true;
+            boolean isNew = highscores.recordIfBest(state.elapsedSec);
             result.headline = "Game Over";
             result.detail = String.format("Time survived: %.1f s", state.elapsedSec);
             result.retryAvailable = true;
             result.onRetry = () -> nav.get().goToSampleGame();
+            result.bestSec = highscores.getBest();
+            result.newRecord = isNew;
             nav.get().goToGameOver();
-            return;
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            nav.get().goToMainMenu();
         }
     }
 
     @Override
     public void resize(int width, int height) {
-        super.resize(width, height);
+        stage.getViewport().update(width, height, true);
         debugOverlay.resize(width, height);
     }
 
     @Override
+    public void pause() {
+        // App backgrounding (Android) — auto-pause the gameplay so the player doesn't return to
+        // an ongoing session that's been frozen at the JVM level. Idempotent.
+        if (state.canPause()) {
+            pauseGame();
+        }
+    }
+
+    @Override
+    public void resume() {
+        // Don't auto-resume on app foreground — a stale return shouldn't toss the user back into
+        // a hot session. The pause overlay stays up, user clicks Resume.
+    }
+
+    @Override
+    public void hide() {
+        // Keep this @Singleton screen's state intact — show() will rebuild on next entry.
+    }
+
+    @Override
     public void dispose() {
-        super.dispose();
+        stage.dispose();
         debugOverlay.dispose();
     }
 
@@ -215,7 +361,7 @@ public class SampleGameScreen extends BaseScreen {
         BodyDef def = new BodyDef();
         def.type = BodyDef.BodyType.KinematicBody;
         def.position.set((xPx + spriteW / 2f) / ppm, (yPx + spriteH / 2f) / ppm);
-        Body body = world.createBody(def);
+        Body body = physicsWorld.getWorld().createBody(def);
 
         PolygonShape shape = new PolygonShape();
         shape.setAsBox((PLAYER_BODY_WIDTH / 2f) / ppm, (PLAYER_BODY_HEIGHT / 2f) / ppm);
@@ -249,11 +395,12 @@ public class SampleGameScreen extends BaseScreen {
 
         BodyDef def = new BodyDef();
         def.type = BodyDef.BodyType.StaticBody;
-        Body ground = world.createBody(def);
+        Body ground = physicsWorld.getWorld().createBody(def);
 
         EdgeShape edge = new EdgeShape();
         edge.set(0f, 0f, screenWidthMeters, 0f);
         ground.createFixture(edge, 0f);
         edge.dispose();
     }
+
 }

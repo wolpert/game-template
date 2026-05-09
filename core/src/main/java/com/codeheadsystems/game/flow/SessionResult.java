@@ -29,6 +29,19 @@ public class SessionResult {
      */
     public Runnable onRetry;
 
+    /**
+     * Best ever (in the current persistence's units, e.g. seconds) for the just-finished mode.
+     * Populated by the game on session end alongside {@link #newRecord}. Zero means
+     * "no recorded best" — {@code GameOverScreen} hides the line in that case.
+     */
+    public float bestSec;
+
+    /**
+     * True when the just-finished session set a new persisted best. {@code GameOverScreen}
+     * highlights "+ NEW RECORD" when set.
+     */
+    public boolean newRecord;
+
     @Inject
     public SessionResult() {
         reset();
@@ -40,5 +53,7 @@ public class SessionResult {
         detail = "";
         retryAvailable = true;
         onRetry = () -> {};
+        bestSec = 0f;
+        newRecord = false;
     }
 }
