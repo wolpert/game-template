@@ -14,7 +14,7 @@ just cloning the repository.
 * Ashley entity-component-system framework
 * Dagger used for injection
 * YAML support
-* Stubbed out screens include loading screen, main menu, preferences and level picker.
+* Stubbed out screens include loading, main menu, preferences, level picker, and game-over.
 * Support for importing aseprite files for animation easily.
 * Sample game includes a moving 2D character dodging falling blocks (touch/click to move; 5 hits ends the run after a death animation, score is time survived) wired up to Box2D.
 
@@ -66,23 +66,39 @@ Dagger components and modules live under
 `core/src/main/java/com/codeheadsystems/game/di/`:
 
 * `CoreModule` — scaffold-only `@Provides` bindings: `SpriteBatch`,
-  `AssetManager`, `Skin`, `Preferences`, the Box2D `World`, `GameConfig`,
-  the scaffold `EntitySystem`s (multibound via `@IntoSet`), the scaffold
-  `LoadableAsset` set, and `@BindsOptionalOf @Sample` slots that demo
-  code can fill.
-* `SampleModule` — the bundled dodge demo: a `TextureAtlas` provider, the
-  demo's two extra `EntitySystem`s, the demo `LoadableAsset` set, and
-  the `@Sample`-qualified bindings that fill the optional slots
-  (`Screen`, `InputGate`, debug-overlay extras).
+  `AssetManager`, `Skin`, `Preferences`, `GameConfig`, the `PhysicsWorld`
+  wrapper (which owns the Box2D `World`), the `LifecycleGate`, the
+  scaffold `EntitySystem`s (multibound via `@IntoSet`), the scaffold
+  `LoadableAsset` set, the scaffold screens (multibound via `@IntoMap`
+  keyed by `@ScreenKey(Class<? extends Screen>)`), and `@BindsOptionalOf
+  @Sample` slots (`InputGate`, `HighscoreReader`, debug-overlay extras)
+  that demo code can fill.
+* `SampleModule` — the bundled dodge demo: a `TextureAtlas` provider,
+  the demo's four extra `EntitySystem`s (`InputSystem`,
+  `BlockSpawnSystem`, `DeathSystem`, `BlockCleanupSystem`), the demo
+  `LoadableAsset` set, the `@IntoMap @ScreenKey(SampleScreenMarker.class)`
+  entry that registers `SampleGameScreen`, and the `@Sample`-qualified
+  bindings that fill `CoreModule`'s optional slots (`InputGate`,
+  `HighscoreReader`, debug-overlay extras).
 * `GameComponent` — the `@Singleton @Component` listing both modules and
   exposing `inject(TheGame)`.
 
 The two-module split is the seam that makes the demo opt-in. The
-scaffold never imports anything from `com.codeheadsystems.game.sample.*`;
-the `@Sample` qualifier (`di/Sample.java`) plus `@BindsOptionalOf` lets
-the sample rebind scaffold defaults at the Dagger level. Dropping
-`SampleModule.class` from `GameComponent.modules` resolves every
-optional slot to empty — see [Removing the dodge sample](#removing-the-dodge-sample)
+scaffold never imports anything from `com.codeheadsystems.game.sample.*`.
+Two complementary mechanisms enable that:
+
+* The `@Sample` qualifier (`di/Sample.java`) plus `@BindsOptionalOf`
+  lets the sample rebind scaffold defaults (`InputGate`,
+  `HighscoreReader`, `DebugOverlay`'s extras line) at the Dagger level.
+* The screen registry uses `@IntoMap @ScreenKey(...)`. The scaffold
+  references the sample's screen via `SampleScreenMarker` (a
+  scaffold-side `Screen` marker class used purely as a map key); when
+  `SampleModule` is wired in it contributes a real entry under that
+  key, otherwise the lookup misses.
+
+Dropping `SampleModule.class` from `GameComponent.modules` resolves
+every optional slot to empty and removes the `SampleScreenMarker` map
+entry — see [Removing the dodge sample](#removing-the-dodge-sample)
 below.
 
 `TheGame.create()` builds the graph with
@@ -106,23 +122,25 @@ Game state lives in Ashley `Entity` instances composed of pure-data
 
 Layout:
 
-* `ecs/component/` — pure-data components.
+* `ecs/component/` — pure-data scaffold components.
   * `PositionComponent` — `float x`, `float y`, and `int z` (render layer; lower draws first).
   * `TextureComponent` — a `TextureRegion`, so atlas frames and stand-alone textures share one render path. Wrap a whole `Texture` with `new TextureRegion(texture)`.
   * `AnimationComponent` — a libGDX `Animation<TextureRegion>` plus `float elapsed`.
   * `VelocityComponent` — `float dx`, `float dy` (pixels/second).
-  * `InputComponent` — marker; tagged entities read pointer input each tick.
+  * `WrapAroundComponent` — sprite `widthPx`; marks an entity as horizontally looping when it drifts off-screen.
   * `BodyComponent` — wraps a Box2D `Body`. `PhysicsSystem` writes the body's center back to `PositionComponent` (in pixels, as the texture's bottom-left) each tick.
-  * `BlockComponent` — marker; identifies falling-block entities so the contact listener can recognize player↔block hits.
-  * `PlayerComponent` — marker; lets `DeathSystem` find the player without coupling to `InputComponent` (which is about input, not identity).
-* `ecs/system/` — behavior, ordered by priority (lower runs earlier).
-  * `InputSystem` (priority -10) drives input-controlled **physics bodies** toward the pointer at constant speed and stops them at the pointer or the screen edge. Family is `Input + Body + Position + Texture`; each tick it clamps `pos.x` to `[0, screenW − spriteW]` (correcting via `body.setTransform(...)` if needed), then either sets `body.setLinearVelocity(±speed/ppm, 0)` or, when within one frame's max travel of the target, snaps the body with `setTransform` and zeros velocity. The snap path uses `setTransform` rather than calibrated velocity because Box2D's fixed timestep can't be aligned with the frame's `dt` — for a kinematic body, teleporting cleanly is the right tool. Pointer up clears velocity. Works for desktop mouse and mobile touch interchangeably — libGDX's `Input` interface unifies them.
-  * `PhysicsSystem` (priority -8) accumulates frame deltas (capped at 0.25s) and runs Box2D `world.step(1/60s, 6, 2)` as many times as fit, then writes each body's center back to `PositionComponent` in pixels (subtracting the texture's half-extents so the result is bottom-left-anchored, the form `RenderSystem` expects).
-  * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components. The current demo doesn't use it (the player uses Box2D for motion), but it's kept as the canonical pattern for non-physical entities.
-  * `BlockSpawnSystem` (priority -9) spawns a fresh falling block every 1.5s by delegating to `FallingBlockFactory`; halts when `!GameState.isPlaying()`. `reset()` schedules an immediate next spawn (used on session restart).
-  * `DeathSystem` (priority -6) drives the death sequence: when `GameState.phase` is `DYING`, swaps the player's `AnimationComponent.animation` to the one-shot `player1_Died` clip and resets elapsed; on a later tick, when `Animation.isAnimationFinished(elapsed)` returns true, sets phase to `GAME_OVER` so `SampleGameScreen.render` can navigate away. Runs before `AnimationSystem` so the swap takes effect on the same tick the phase changed.
+* Sample-only components live under `sample/` (e.g. `InputComponent`, `BlockComponent`, `PlayerComponent`) so the scaffold/sample boundary stays clean. `InputComponent` is sample-only because its contract requires a Box2D `BodyComponent`, which the empty scaffold `GameScreen` never produces.
+* `ecs/system/` — scaffold behavior, ordered by priority (lower runs earlier).
+  * `PhysicsSystem` (priority -8) accumulates frame deltas (capped at 0.25s) and runs Box2D `world.step(1/60s, 6, 2)` as many times as fit, then writes each body's center back to `PositionComponent` in pixels (subtracting the texture's half-extents so the result is bottom-left-anchored, the form `RenderSystem` expects). When passed `delta == 0f` (because `LifecycleGate` reports the app is backgrounded, or the screen is paused), it short-circuits and resets its accumulator so a long pause doesn't drain to many catch-up ticks on resume.
+  * `MovementSystem` (priority -5) integrates velocity into position (`pos += vel * dt`) for any entity with both components. The demo's drifting background entity is its consumer; the scaffold's empty `GameScreen` builds no Movement-driven entities.
+  * `WrapAroundSystem` (priority -4) loops drifting entities horizontally so they re-enter on the opposite side once fully off-screen. Genuinely reusable, so it stays scaffold-side even though only the demo currently exercises it.
   * `AnimationSystem` (priority 0) advances `elapsed` and writes the current frame into `TextureComponent.region`. Calls `Animation.getKeyFrame(elapsed)` (the one-arg overload) so each animation's intrinsic `PlayMode` is honored — `LOOP` animations loop, `NORMAL` animations stop on the last frame.
   * `RenderSystem` (priority 10) is a `SortedIteratingSystem` keyed on `PositionComponent.z`; the family is `Position + Texture` and it draws via the injected `SpriteBatch`.
+* `sample/` — demo-only systems (registered via `SampleModule`'s `@IntoSet` providers; vanish when the demo is stripped).
+  * `InputSystem` (priority -10) drives the input-controlled **physics body** toward the pointer at constant speed and stops it at the pointer or the screen edge. Family is `Input + Body + Position + Texture`; each tick it clamps `pos.x` to `[0, screenW − spriteW]` (correcting via `body.setTransform(...)` if needed), then either sets `body.setLinearVelocity(±speed/ppm, 0)` or, when within one frame's max travel of the target, snaps the body with `setTransform` and zeros velocity. The snap path uses `setTransform` rather than calibrated velocity because Box2D's fixed timestep can't be aligned with the frame's `dt` — for a kinematic body, teleporting cleanly is the right tool. Pointer up clears velocity. Consults the injected `InputGate` so the player freezes when gameplay is paused or in `DYING`/`GAME_OVER`. Caches `Gdx.graphics.getWidth()` once per frame so per-entity iteration doesn't pay the JNI call on Android.
+  * `BlockSpawnSystem` (priority -9) spawns a fresh falling block every 1.5s by delegating to `FallingBlockFactory`; halts when `!GameState.isPlaying()`. `reset()` schedules an immediate next spawn (used on session restart).
+  * `DeathSystem` (priority -6) drives the death sequence: when `GameState.phase` is `DYING`, swaps the player's `AnimationComponent.animation` to the one-shot `player1_Died` clip and resets elapsed; on a later tick, when `Animation.isAnimationFinished(elapsed)` returns true, sets phase to `GAME_OVER` so `SampleGameScreen.render` can navigate away. Runs before `AnimationSystem` so the swap takes effect on the same tick the phase changed.
+  * `BlockCleanupSystem` (priority 5) destroys block bodies + entities that fall below a y-margin (and enforces a hard cap), so a long run doesn't fill the world indefinitely.
 
 `Gdx.input` and `Gdx.graphics` are bound through Dagger (`provideInput`,
 `provideGraphics`), so systems take them via constructor injection and
@@ -130,14 +148,23 @@ tests can substitute mocks — see `InputSystemTest` for the pattern.
 
 #### Box2D
 
-The Box2D `World` is provided by Dagger (`CoreModule.provideWorld`) and
-created with gravity from `config.physics.gravity`. `Box2D.init()` is
-called inside the provider so native loading is explicit. The world is
-returned scaffold-pure (no contact listener) — the dodge demo's
+The Box2D `World` is wrapped by `physics/PhysicsWorld`, a `@Singleton`
+that owns the world + its contact listener as a single unit.
+`PhysicsWorld`'s constructor calls `Box2D.init()` and builds the world
+with gravity from `config.physics.gravity`; raw-world consumers
+(`PhysicsSystem`, factories) get the world via `physicsWorld.getWorld()`
+through a thin `World` provider in `CoreModule` that delegates to it.
+`PhysicsWorld` exposes `setContactListener(...)` and `clearSession(engine)`
+as the single-call hooks for installing the demo's `GameContactListener`
+and tearing down a session in the right order (destroy bodies before
+entities, so contact callbacks fired during destruction still see
+well-formed `userData`). The world is returned scaffold-pure (no
+contact listener installed at construction) — the dodge demo's
 `SampleGameScreen.startNewSession()` installs its `GameContactListener`
 on every entry, which keeps the listener (and its sample-side imports)
 out of the core module. The sample screen (on each `show()`) tears down
-any prior session and populates the world:
+any prior session via `physicsWorld.clearSession(engine)` and populates
+the world:
 
 * A static `EdgeShape` **ground** at `y = 0` spanning the screen.
 * A kinematic `PolygonShape` **player** sized to the
@@ -171,10 +198,22 @@ Pixel ↔ meter conversion is centralized: every body is built using
 when syncing positions back. Don't construct bodies in pixel coords —
 divide by `pixelsPerMeter` first.
 
-`World.dispose()` runs in `TheGame.dispose()`, which destroys every
-body it owns — you don't need to track bodies separately for cleanup.
-The existing R8 keep rules in `android/proguard-rules.pro` already
-preserve the Box2D JNI callback methods on `World`.
+`physicsWorld.dispose()` runs in `TheGame.dispose()`, which destroys
+every body the world owns — you don't need to track bodies separately
+for cleanup. The existing R8 keep rules in `android/proguard-rules.pro`
+already preserve the Box2D JNI callback methods on `World`.
+
+#### Lifecycle pause
+
+`lifecycle/AppLifecycle` is a `@Singleton` mutable holder, exposed via
+the read-only `LifecycleGate` interface. `TheGame.pause()/resume()`
+flip its active flag (Android activity background/foreground or desktop
+window minimize). `SampleGameScreen.render` zeroes the engine delta
+when the gate is closed; `PhysicsSystem` resets its accumulator on a
+zero delta so a long background pause doesn't tick the world many
+times catching up on resume. Add the gate as a constructor dep
+(`@Inject ... (LifecycleGate gate)`) on any new screen/system that
+needs the same behaviour.
 
 #### Testing physics
 
@@ -365,12 +404,17 @@ Loading → Main Menu → { Preferences, Level Picker → { Empty Game, Dodge Sa
 ```
 
 `TheGame` extends libGDX's `Game`, builds the Dagger graph, and hands
-control to `ScreenNavigator`, which exposes `goToLoading()` /
-`goToMainMenu()` / `goToPreferences()` / `goToLevelPicker()` /
-`goToGame()` / `goToGameOver()` / `goToSampleGame()`. Each screen is
-held as a `Provider<>` and only built on first navigation — important
-for cold-start on mobile where `LoadingScreen` should reach the GPU
-before any sibling screen does any work. Screens themselves take
+control to `ScreenNavigator`. The navigator is just a typed dispatcher
+over a Dagger `Map<Class<? extends Screen>, Provider<Screen>>`
+populated by `@IntoMap @ScreenKey(...)` providers in the modules. Its
+public surface is `goTo(Class)` / `has(Class)`, plus thin convenience
+wrappers (`goToLoading()`, `goToMainMenu()`, `goToPreferences()`,
+`goToLevelPicker()`, `goToGame()`, `goToGameOver()`, `goToSampleGame()`,
+`hasSampleGame()`). Each screen is held as a `Provider<>` so its
+Scene2D tree is only built on first navigation — important for
+cold-start on mobile where `LoadingScreen` should reach the GPU before
+any sibling screen does any work. `disposeAll()` only resolves
+providers that were actually visited. Screens themselves take
 `Provider<ScreenNavigator>` to break the construction cycle.
 
 Screens live in `com.codeheadsystems.game.screens`:
@@ -379,10 +423,12 @@ Screens live in `com.codeheadsystems.game.screens`:
   declared `LoadableAsset` against `AssetManifest` so a missing or
   renamed file fails fast with a precise error.
 * `MainMenuScreen`, `PreferencesScreen`, `LevelPickerScreen`,
-  `GameOverScreen` — Scene2D menus extending `BaseScreen` (owns a
-  `Stage` + viewport + standard `show/render/resize/dispose`
-  boilerplate). `LevelPickerScreen` only renders the "Dodge Sample"
-  button when `ScreenNavigator.hasSampleGame()` is true.
+  `GameOverScreen` — Scene2D menus extending `BaseScreen`, which takes
+  a shared `SpriteBatch` via `@Inject` and builds a density-scaled
+  `ScreenViewport` (`setUnitsPerPixel(1f / Gdx.graphics.getDensity())`)
+  re-applied on `resize()` so menu UI stays a sensible physical size
+  on high-DPI phones. `LevelPickerScreen` only renders the "Dodge
+  Sample" button when `ScreenNavigator.hasSampleGame()` is true.
 * `GameScreen` — the empty scaffold game screen, extending
   `BaseScreen`. A hint label and `ESC` → main menu, with `show()`
   clearing engine entities and destroying all Box2D bodies so the
@@ -391,11 +437,12 @@ Screens live in `com.codeheadsystems.game.screens`:
 * `sample.SampleGameScreen` — the dodge demo's playable screen, lives
   under the sample package and implements `Screen` directly because its
   gameplay is Ashley/Box2D-driven (Scene2D is reserved for menus + the
-  empty placeholder). `show()` rebuilds a session from scratch: clears
-  entities, destroys world bodies, resets `GameState` + spawner,
-  re-installs `GameContactListener`. Wired into the navigator via
-  `@Sample Optional<Provider<Screen>>` so it cleanly disappears when
-  `SampleModule` is removed.
+  empty placeholder). `show()` rebuilds a session from scratch via
+  `physicsWorld.clearSession(engine)`, then resets `GameState` +
+  spawner and re-installs `GameContactListener`. Wired into the
+  navigator via a `@IntoMap @ScreenKey(SampleScreenMarker.class)` entry
+  in `SampleModule`, so it cleanly disappears (along with the "Dodge
+  Sample" button) when `SampleModule` is removed.
 
 UI uses the bundled `assets/ui/uiskin.json` (provided as
 `@Singleton Skin` in `CoreModule`). Each menu screen builds its widget
@@ -403,15 +450,24 @@ tree in its `@Inject` constructor.
 
 #### Adding a new screen
 
-1. Create the class under `screens/`, extending `BaseScreen` (menus) or
+1. Create the class under `screens/`, extending `BaseScreen` (menus —
+   forward the `SpriteBatch` ctor arg via `super(batch)`) or
    implementing `Screen` directly (game-style).
-2. Annotate `@Singleton`, take `Skin` and `Provider<ScreenNavigator>`
-   via `@Inject` constructor — the `Provider` breaks the construction
-   cycle between the navigator and its screens.
-3. Add a `Provider<>` field + a `built` flag + a `goToXxx()` method on
-   `ScreenNavigator`, plus a guarded line in `disposeAll()` so the
-   provider isn't resolved (and thus built just to be disposed) if it
-   was never visited.
+2. Annotate `@Singleton`, take `Skin`, `SpriteBatch` (for `BaseScreen`
+   subclasses), and `Provider<ScreenNavigator>` via `@Inject`
+   constructor — the `Provider` breaks the construction cycle between
+   the navigator and its screens.
+3. In the owning module (`CoreModule` for scaffold, `SampleModule` for
+   demo-only), add one provider:
+   ```java
+   @Provides @Singleton @IntoMap @ScreenKey(YourScreen.class)
+   static Screen bindYourScreen(YourScreen impl) { return impl; }
+   ```
+   That single entry registers the screen with `ScreenNavigator`. No
+   field, ctor param, `goToXxx()` method, or `disposeAll()` edit on
+   `ScreenNavigator` is required — call sites use
+   `nav.goTo(YourScreen.class)`. Add a convenience `goToYourScreen()`
+   wrapper on the navigator only if you prefer the older call style.
 
 ### Removing the dodge sample
 
@@ -432,8 +488,11 @@ so the deletion is mechanical: `./gradlew clean build test` and
 `:android:minifyReleaseWithR8` should both stay green. The empty
 scaffold `GameScreen` (reached via "Empty Game") becomes the only
 level; `LevelPickerScreen` automatically hides the "Dodge Sample"
-button (its `@Sample`-qualified `Optional<Provider<Screen>>` resolves
-to empty) and `goToSampleGame()` becomes a no-op.
+button (the screen-registry map no longer has an entry under
+`SampleScreenMarker`, so `nav.hasSampleGame()` returns false) and
+`goToSampleGame()` becomes a no-op. The `@Sample`-qualified optional
+slots (`InputGate`, `HighscoreReader`, debug-overlay extras) similarly
+resolve to empty and fall back to their scaffold defaults.
 
 ## Roadmap
 
