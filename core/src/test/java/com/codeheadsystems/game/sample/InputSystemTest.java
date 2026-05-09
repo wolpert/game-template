@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.ecs.system;
+package com.codeheadsystems.game.sample;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -20,9 +20,9 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
-import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
+import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

@@ -45,6 +45,14 @@ public class PhysicsSystem extends IteratingSystem {
 
     @Override
     public void update(float deltaTime) {
+        // App backgrounded / paused — caller signals frozen time by passing zero delta. Drop any
+        // accumulated remainder so a long pause doesn't replay as a flurry of steps on resume.
+        // (MAX_FRAME_TIME caps individual frames but doesn't reset what's already banked.)
+        if (deltaTime == 0f) {
+            accumulator = 0f;
+            super.update(deltaTime);
+            return;
+        }
         // Cap to avoid the spiral of death after a long pause / breakpoint.
         accumulator += Math.min(deltaTime, MAX_FRAME_TIME);
         while (accumulator >= STEP_SECONDS) {

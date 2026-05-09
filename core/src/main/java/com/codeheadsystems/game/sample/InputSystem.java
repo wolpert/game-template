@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.ecs.system;
+package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
@@ -13,7 +13,6 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
-import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
 import javax.inject.Inject;
@@ -55,6 +54,9 @@ public class InputSystem extends IteratingSystem {
     private float anchorPointerX;
     private float anchorSpriteCenterX;
 
+    /** Cached at the start of each frame to avoid per-entity JNI hops on Android. */
+    private int screenWidth;
+
     @Inject
     public InputSystem(Input input, Graphics graphics, GameConfig config, InputGate inputGate) {
         this(input, graphics, config, inputGate, isAndroid());
@@ -78,6 +80,14 @@ public class InputSystem extends IteratingSystem {
     }
 
     @Override
+    public void update(float deltaTime) {
+        // Snapshot once per frame — getWidth() is a JNI call on Android. Always reflects the
+        // current size, so resizes are picked up next frame for free.
+        screenWidth = graphics.getWidth();
+        super.update(deltaTime);
+    }
+
+    @Override
     protected void processEntity(Entity entity, float deltaTime) {
         Body body = bodies.get(entity).body;
         if (!inputGate.isInputActive()) {
@@ -91,7 +101,7 @@ public class InputSystem extends IteratingSystem {
         TextureComponent tex = textures.get(entity);
 
         int spriteW = tex.region.getRegionWidth();
-        float maxX = Math.max(0f, graphics.getWidth() - spriteW);
+        float maxX = Math.max(0f, screenWidth - spriteW);
 
         // Hold the bounds invariant — covers initial spawn and window-resize-shrink.
         if (pos.x < 0f || pos.x > maxX) {

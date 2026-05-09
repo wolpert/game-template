@@ -4,7 +4,9 @@ buildscript {
     repositories {
         mavenCentral()
         gradlePluginPortal()
-        mavenLocal()
+        // mavenLocal() intentionally omitted — adds non-reproducible build inputs.
+        // To opt back in for local snapshots, add it via your ~/.gradle/init.gradle.kts:
+        //     allprojects { buildscript { repositories { mavenLocal() } }; repositories { mavenLocal() } }
         google()
         maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
     }
@@ -64,10 +66,11 @@ subprojects {
     extra["appName"] = "game-template"
     repositories {
         mavenCentral()
-        // You may want to remove the following line if you have errors downloading dependencies.
-        mavenLocal()
+        // mavenLocal() and jitpack.io intentionally omitted — both add non-reproducible build
+        // inputs. To opt back in for local snapshots, add mavenLocal() to your own
+        // ~/.gradle/init.gradle.kts:
+        //     allprojects { repositories { mavenLocal() } }
         maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
-        maven { url = uri("https://jitpack.io") }
     }
 }
 

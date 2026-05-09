@@ -1,5 +1,6 @@
 package com.codeheadsystems.game.screens;
 
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.CheckBox;
@@ -25,7 +26,8 @@ public class PreferencesScreen extends BaseScreen {
     private final CheckBox debugOverlay;
 
     @Inject
-    public PreferencesScreen(Skin skin, UserPreferences prefs, Provider<ScreenNavigator> nav) {
+    public PreferencesScreen(SpriteBatch batch, Skin skin, UserPreferences prefs, Provider<ScreenNavigator> nav) {
+        super(batch);
         this.prefs = prefs;
         this.nav = nav;
 

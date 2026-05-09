@@ -12,7 +12,6 @@ import com.badlogic.gdx.physics.box2d.Box2D;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.GdxNativesLoader;
-import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.render.CameraShake;
 import com.codeheadsystems.game.render.Hitstop;
 import com.codeheadsystems.game.render.TintFlash;

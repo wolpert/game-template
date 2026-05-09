@@ -2,7 +2,6 @@ package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
-import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -28,7 +27,7 @@ import javax.inject.Singleton;
  * is the entity itself, so the contact listener can look up components from a colliding body.
  *
  * <p>Per-spawn allocation is hot-path: this factory caches the region array, the
- * {@link Animation}, and the reusable Box2D builder structs so each {@link #create()} call
+ * {@link Animation}, and the reusable Box2D builder structs so each {@link #create(float, float)} call
  * mutates rather than allocates. Box2D copies the {@link BodyDef}/{@link FixtureDef} fields
  * out at body/fixture creation time, so it's safe to reuse the same instances for every spawn.
  *
@@ -48,11 +47,10 @@ public class FallingBlockFactory implements Disposable {
 
     private final World world;
     private final GameConfig config;
-    private final Graphics graphics;
     /**
      * {@code Provider} (not direct injection) breaks the Dagger cycle: {@code Engine} depends on the
      * {@code Set<EntitySystem>}, which transitively depends on this factory through
-     * {@link BlockSpawnSystem}. The provider is resolved lazily inside {@link #create()}, by which
+     * {@link BlockSpawnSystem}. The provider is resolved lazily inside {@link #create(float, float)}, by which
      * time the engine has been built.
      */
     private final Provider<Engine> engineProvider;
@@ -71,10 +69,9 @@ public class FallingBlockFactory implements Disposable {
     private final PolygonShape shape = new PolygonShape();
 
     @Inject
-    public FallingBlockFactory(World world, TextureAtlas atlas, GameConfig config, Graphics graphics, Provider<Engine> engineProvider) {
+    public FallingBlockFactory(World world, TextureAtlas atlas, GameConfig config, Provider<Engine> engineProvider) {
         this.world = world;
         this.config = config;
-        this.graphics = graphics;
         this.engineProvider = engineProvider;
 
         Array<TextureRegion> regions = new Array<>(atlas.findRegions(BLOCK_REGION));
@@ -100,11 +97,14 @@ public class FallingBlockFactory implements Disposable {
         bodyDef.type = BodyDef.BodyType.DynamicBody;
     }
 
-    public Entity create() {
+    /**
+     * Spawn a block. Caller passes the current screen dimensions in pixels — caching at the call
+     * site lets {@link BlockSpawnSystem} read {@code Graphics} once per frame instead of once per
+     * spawn (Android JNI hop avoidance).
+     */
+    public Entity create(float screenW, float screenH) {
         Engine engine = engineProvider.get();
         float ppm = config.physics.pixelsPerMeter;
-        float screenW = graphics.getWidth();
-        float screenH = graphics.getHeight();
 
         float spawnXPx = MathUtils.random(blockW / 2f, screenW - blockW / 2f);
         float spawnYPx = screenH * SPAWN_TOP_MARGIN; // just above the visible top

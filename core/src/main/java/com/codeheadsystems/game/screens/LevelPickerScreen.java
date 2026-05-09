@@ -1,5 +1,6 @@
 package com.codeheadsystems.game.screens;
 
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -23,7 +24,8 @@ public class LevelPickerScreen extends BaseScreen {
     private final Provider<ScreenNavigator> navProvider;
 
     @Inject
-    public LevelPickerScreen(Skin skin, Provider<ScreenNavigator> navProvider) {
+    public LevelPickerScreen(SpriteBatch batch, Skin skin, Provider<ScreenNavigator> navProvider) {
+        super(batch);
         this.navProvider = navProvider;
         // navProvider returns the @Singleton ScreenNavigator — safe to resolve once at
         // construction since the navigator's own Provider<Screen> deps stay lazy.

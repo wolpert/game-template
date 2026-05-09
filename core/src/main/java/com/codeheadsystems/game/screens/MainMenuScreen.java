@@ -2,6 +2,7 @@ package com.codeheadsystems.game.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -25,9 +26,11 @@ public class MainMenuScreen extends BaseScreen {
     private boolean quitDialogOpen;
 
     @Inject
-    public MainMenuScreen(Skin skin,
+    public MainMenuScreen(SpriteBatch batch,
+                          Skin skin,
                           Provider<ScreenNavigator> nav,
                           @Sample Optional<HighscoreReader> highscoreReader) {
+        super(batch);
         this.skin = skin;
         this.highscoreReader = highscoreReader;
         Table table = new Table();

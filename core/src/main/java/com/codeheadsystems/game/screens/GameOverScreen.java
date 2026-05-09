@@ -1,5 +1,6 @@
 package com.codeheadsystems.game.screens;
 
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -28,7 +29,8 @@ public class GameOverScreen extends BaseScreen {
     private final TextButton tryAgain;
 
     @Inject
-    public GameOverScreen(Skin skin, Provider<ScreenNavigator> nav, SessionResult result) {
+    public GameOverScreen(SpriteBatch batch, Skin skin, Provider<ScreenNavigator> nav, SessionResult result) {
+        super(batch);
         this.result = result;
         this.nav = nav;
 

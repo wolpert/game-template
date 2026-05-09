@@ -1,6 +1,7 @@
 package com.codeheadsystems.game.screens;
 
 import com.badlogic.ashley.core.Engine;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -29,11 +30,13 @@ public class GameScreen extends BaseScreen {
     private final DebugOverlay debugOverlay;
 
     @Inject
-    public GameScreen(Engine engine,
+    public GameScreen(SpriteBatch batch,
+                      Engine engine,
                       World world,
                       Provider<ScreenNavigator> nav,
                       DebugOverlay debugOverlay,
                       Skin skin) {
+        super(batch);
         this.engine = engine;
         this.world = world;
         this.nav = nav;

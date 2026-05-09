@@ -1,7 +1,7 @@
 package com.codeheadsystems.game.ecs;
 
 /**
- * Seam between {@link com.codeheadsystems.game.ecs.system.InputSystem} and the gameplay
+ * Seam between the sample's {@code InputSystem} and the gameplay
  * lifecycle. The default scaffold binding (see {@code CoreModule.provideInputGate}) returns
  * {@code true} unconditionally, so input-driven entities always respond. Demo / sample
  * modules can rebind this via a {@code @Sample}-qualified provider (consumed through

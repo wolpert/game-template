@@ -1,6 +1,7 @@
 package com.codeheadsystems.game.screens;
 
 import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -42,11 +43,13 @@ public class LoadingScreen extends BaseScreen {
     private boolean queued;
 
     @Inject
-    public LoadingScreen(Skin skin,
+    public LoadingScreen(SpriteBatch batch,
+                         Skin skin,
                          Provider<ScreenNavigator> nav,
                          AssetManager assets,
                          AssetManifest manifest,
                          Set<LoadableAsset> loadables) {
+        super(batch);
         this.nav = nav;
         this.assets = assets;
         this.manifest = manifest;

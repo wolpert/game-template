@@ -28,6 +28,9 @@ public class WrapAroundSystem extends IteratingSystem {
     private final ComponentMapper<PositionComponent> positions = ComponentMapper.getFor(PositionComponent.class);
     private final ComponentMapper<WrapAroundComponent> wraps = ComponentMapper.getFor(WrapAroundComponent.class);
 
+    /** Cached at the start of each frame to avoid per-entity JNI hops on Android. */
+    private float screenW;
+
     @Inject
     public WrapAroundSystem(Graphics graphics) {
         super(Family.all(PositionComponent.class, WrapAroundComponent.class).get(), PRIORITY);
@@ -35,10 +38,17 @@ public class WrapAroundSystem extends IteratingSystem {
     }
 
     @Override
+    public void update(float deltaTime) {
+        // Snapshot once per frame — getWidth() is a JNI call on Android. Always reflects the
+        // current size, so this picks up resizes the next frame for free.
+        screenW = graphics.getWidth();
+        super.update(deltaTime);
+    }
+
+    @Override
     protected void processEntity(Entity entity, float deltaTime) {
         PositionComponent pos = positions.get(entity);
         float widthPx = wraps.get(entity).widthPx;
-        float screenW = graphics.getWidth();
         // pos.x is bottom-left in pixels; wrap when fully past either edge.
         if (pos.x > screenW) {
             pos.x = -widthPx;

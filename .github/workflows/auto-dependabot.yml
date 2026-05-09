@@ -1,5 +1,15 @@
+# Auto-merge Dependabot PRs for patch and minor version updates only.
+#
+# Major version bumps are intentionally NOT auto-merged — a human should review
+# breaking changes. Patch/minor updates are squash-merged automatically once all
+# required status checks pass.
+#
+# Requires a repo branch-protection rule on `main` that requires the CI workflow
+# check (job `build` from .github/workflows/ci.yml) before merge — the `--auto`
+# flag waits on those required checks. Without that rule, `--auto` merges as
+# soon as mergeability is satisfied (i.e. effectively immediately).
 name: Approve Dependabot Pushes
-on: pull_request
+on: pull_request_target
 
 permissions:
   contents: write
@@ -15,13 +25,15 @@ jobs:
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: Enable auto-merge for Dependabot PRs
-        run: gh pr merge --auto --squash --delete-branch "$PR_URL"
+      - name: Approve patch/minor PRs
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      - name: Approve a PR
-        run: gh pr review --approve "$PR_URL"
+      - name: Enable auto-merge for patch/minor PRs
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash --delete-branch "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}

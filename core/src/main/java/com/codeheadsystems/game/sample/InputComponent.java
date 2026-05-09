@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.ecs.component;
+package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.Component;
 import com.badlogic.gdx.utils.Pool;

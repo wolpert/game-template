@@ -30,12 +30,12 @@ import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.debug.DebugOverlay;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
-import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
 import com.codeheadsystems.game.ecs.component.VelocityComponent;
 import com.codeheadsystems.game.ecs.component.WrapAroundComponent;
 import com.codeheadsystems.game.flow.SessionResult;
+import com.codeheadsystems.game.lifecycle.LifecycleGate;
 import com.codeheadsystems.game.physics.PhysicsWorld;
 import com.codeheadsystems.game.render.Hitstop;
 import com.codeheadsystems.game.screens.ScreenNavigator;
@@ -81,6 +81,7 @@ public class SampleGameScreen implements Screen {
     private final HighscoreStore highscores;
     private final Hitstop hitstop;
     private final Skin skin;
+    private final LifecycleGate lifecycleGate;
 
     /** HUD + pause overlay both live on this Stage. The pause overlay starts hidden. */
     private final Stage stage;
@@ -91,6 +92,13 @@ public class SampleGameScreen implements Screen {
 
     /** True after we've populated SessionResult once for this game-over so we don't double-record. */
     private boolean gameOverHandled;
+
+    // HUD allocation skip: rebuild the label text only when the displayed values actually change.
+    // Time is rendered to one decimal, so we snapshot tenths-of-a-second — most frames change
+    // neither hp nor tenths and we skip setText entirely.
+    private final StringBuilder hudBuilder = new StringBuilder(32);
+    private int lastHp = -1;
+    private int lastTimeTenths = -1;
 
     private final InputAdapter keyAdapter = new InputAdapter() {
         @Override
@@ -124,7 +132,8 @@ public class SampleGameScreen implements Screen {
                             GameContactListener contactListener,
                             HighscoreStore highscores,
                             Hitstop hitstop,
-                            Skin skin) {
+                            Skin skin,
+                            LifecycleGate lifecycleGate) {
         this.engine = engine;
         this.logoTexture = logoTexture;
         this.atlas = atlas;
@@ -139,6 +148,7 @@ public class SampleGameScreen implements Screen {
         this.highscores = highscores;
         this.hitstop = hitstop;
         this.skin = skin;
+        this.lifecycleGate = lifecycleGate;
 
         this.stage = new Stage(new ScreenViewport());
 
@@ -225,6 +235,9 @@ public class SampleGameScreen implements Screen {
         state.reset();
         spawner.reset();
         gameOverHandled = false;
+        // Force the next render to push fresh HUD text after session reset.
+        lastHp = -1;
+        lastTimeTenths = -1;
         pauseOverlay.setVisible(false);
         pauseButtonContainer.setVisible(true);
 
@@ -235,6 +248,27 @@ public class SampleGameScreen implements Screen {
         createGroundBody();
         engine.addEntity(buildBackground());
         engine.addEntity(buildPlayer());
+    }
+
+    /**
+     * Allocation-free HUD update: reuses {@link #hudBuilder} and only calls {@link Label#setText}
+     * when the displayed integer/tenths values change. {@code Label.setText(CharSequence)} copies
+     * to its own glyph buffer, so passing the reused {@code StringBuilder} avoids both the
+     * {@code String.format} string and the {@code Float.toString} allocations the previous form
+     * incurred every frame.
+     */
+    private void updateHudLabel() {
+        int displayHp = Math.max(0, state.hp);
+        int currentTenths = (int) (state.elapsedSec * 10);
+        if (displayHp == lastHp && currentTenths == lastTimeTenths) {
+            return;
+        }
+        lastHp = displayHp;
+        lastTimeTenths = currentTenths;
+        hudBuilder.setLength(0);
+        hudBuilder.append("HP: ").append(displayHp)
+                .append("   Time: ").append(currentTenths / 10).append('.').append(currentTenths % 10);
+        scoreLabel.setText(hudBuilder);
     }
 
     private void pauseGame() {
@@ -260,13 +294,16 @@ public class SampleGameScreen implements Screen {
         if (state.isPlaying()) {
             state.elapsedSec += delta;
         }
-        scoreLabel.setText(String.format("HP: %d   Time: %.1f", Math.max(0, state.hp), state.elapsedSec));
+        updateHudLabel();
 
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
 
-        // Pause halts the ECS; hitstop scales it temporarily. Either way, Box2D's accumulator
-        // sees zero (or unscaled) delta and won't tick during a freeze/pause.
-        float scaledDelta = state.isPaused() ? 0f : delta * hitstop.getEngineDeltaScale();
+        // Pause halts the ECS; hitstop scales it temporarily; app backgrounding zeroes it. Any
+        // path that yields zero also resets PhysicsSystem's accumulator so a long pause doesn't
+        // catch up by ticking many simulated steps on resume.
+        float scaledDelta = (state.isPaused() || !lifecycleGate.isAppActive())
+                ? 0f
+                : delta * hitstop.getEngineDeltaScale();
         engine.update(scaledDelta);
         stage.act(delta);
         stage.draw();

@@ -20,18 +20,26 @@ import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.ecs.system.AnimationSystem;
-import com.codeheadsystems.game.ecs.system.InputSystem;
 import com.codeheadsystems.game.ecs.system.MovementSystem;
 import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
 import com.codeheadsystems.game.ecs.system.WrapAroundSystem;
 import com.codeheadsystems.game.highscore.HighscoreReader;
+import com.codeheadsystems.game.lifecycle.AppLifecycle;
+import com.codeheadsystems.game.lifecycle.LifecycleGate;
 import com.codeheadsystems.game.physics.PhysicsWorld;
 import com.codeheadsystems.game.render.TintFlash;
+import com.codeheadsystems.game.screens.GameOverScreen;
+import com.codeheadsystems.game.screens.GameScreen;
+import com.codeheadsystems.game.screens.LevelPickerScreen;
+import com.codeheadsystems.game.screens.LoadingScreen;
+import com.codeheadsystems.game.screens.MainMenuScreen;
+import com.codeheadsystems.game.screens.PreferencesScreen;
 import dagger.BindsOptionalOf;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ElementsIntoSet;
+import dagger.multibindings.IntoMap;
 import dagger.multibindings.IntoSet;
 import java.io.IOException;
 import java.io.Reader;
@@ -51,8 +59,6 @@ public abstract class CoreModule {
 
     @BindsOptionalOf @Sample abstract Supplier<String> optionalSampleDebugLine();
 
-    @BindsOptionalOf @Sample abstract com.badlogic.gdx.Screen optionalSampleScreen();
-
     /**
      * Optional sample-side highscore source. {@code MainMenuScreen} injects the
      * {@link Optional} and only renders a "Best:" line when a {@link HighscoreReader} is bound
@@ -64,7 +70,7 @@ public abstract class CoreModule {
      * Default scaffold binding: input is always active. Demo / sample modules can rebind
      * this via {@code @Sample}-qualified providers (consumed through the optional slot above)
      * to a gameplay-state-aware impl (e.g. closed during DYING / GAME_OVER) so
-     * {@link com.codeheadsystems.game.ecs.system.InputSystem} stays free of demo-specific deps.
+     * {@code InputSystem} (in the sample package) stays free of demo-specific deps.
      */
     @Provides
     @Singleton
@@ -82,6 +88,17 @@ public abstract class CoreModule {
     @Singleton
     static Supplier<String> provideDebugOverlayExtra(@Sample Optional<Supplier<String>> override) {
         return override.orElseGet(() -> () -> "");
+    }
+
+    /**
+     * Bind the mutable {@link AppLifecycle} singleton behind the read-only {@link LifecycleGate}
+     * interface. {@code TheGame} injects the concrete impl so it can flip the active flag from
+     * {@code pause()}/{@code resume()}; everything else takes the gate.
+     */
+    @Provides
+    @Singleton
+    static LifecycleGate provideLifecycleGate(AppLifecycle app) {
+        return app;
     }
 
     @Provides
@@ -178,9 +195,6 @@ public abstract class CoreModule {
 
     // Add new scaffold systems here:
     @Provides @Singleton @IntoSet
-    static EntitySystem bindInputSystem(InputSystem s) { return s; }
-
-    @Provides @Singleton @IntoSet
     static EntitySystem bindPhysicsSystem(PhysicsSystem s) { return s; }
 
     @Provides @Singleton @IntoSet
@@ -214,4 +228,24 @@ public abstract class CoreModule {
     static Set<LoadableAsset> provideScaffoldAssets() {
         return Set.copyOf(EnumSet.allOf(Asset.class));
     }
+
+    // Screen registry. Add a new screen by adding one @IntoMap @ScreenKey provider — no matching
+    // field/ctor/method/dispose-line edits in ScreenNavigator are required.
+    @Provides @Singleton @IntoMap @ScreenKey(LoadingScreen.class)
+    static com.badlogic.gdx.Screen bindLoadingScreen(LoadingScreen s) { return s; }
+
+    @Provides @Singleton @IntoMap @ScreenKey(MainMenuScreen.class)
+    static com.badlogic.gdx.Screen bindMainMenuScreen(MainMenuScreen s) { return s; }
+
+    @Provides @Singleton @IntoMap @ScreenKey(PreferencesScreen.class)
+    static com.badlogic.gdx.Screen bindPreferencesScreen(PreferencesScreen s) { return s; }
+
+    @Provides @Singleton @IntoMap @ScreenKey(LevelPickerScreen.class)
+    static com.badlogic.gdx.Screen bindLevelPickerScreen(LevelPickerScreen s) { return s; }
+
+    @Provides @Singleton @IntoMap @ScreenKey(GameScreen.class)
+    static com.badlogic.gdx.Screen bindGameScreen(GameScreen s) { return s; }
+
+    @Provides @Singleton @IntoMap @ScreenKey(GameOverScreen.class)
+    static com.badlogic.gdx.Screen bindGameOverScreen(GameOverScreen s) { return s; }
 }

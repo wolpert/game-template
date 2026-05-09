@@ -5,12 +5,15 @@ import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.codeheadsystems.game.assets.LoadableAsset;
 import com.codeheadsystems.game.di.Sample;
+import com.codeheadsystems.game.di.ScreenKey;
 import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.highscore.HighscoreReader;
+import com.codeheadsystems.game.screens.SampleScreenMarker;
 import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ElementsIntoSet;
+import dagger.multibindings.IntoMap;
 import dagger.multibindings.IntoSet;
 import java.util.EnumSet;
 import java.util.Set;
@@ -25,7 +28,13 @@ public abstract class SampleModule {
         return state::isPlaying;
     }
 
-    @Provides @Sample @Singleton
+    /**
+     * Contributes the dodge demo into the screen registry under {@link SampleScreenMarker} — the
+     * scaffold-side handle {@link com.codeheadsystems.game.screens.ScreenNavigator} uses without
+     * importing this package. Removing {@code SampleModule} from {@code GameComponent} drops this
+     * entry, the navigator's lookup misses, and {@code LevelPickerScreen} hides its button.
+     */
+    @Provides @Singleton @IntoMap @ScreenKey(SampleScreenMarker.class)
     static com.badlogic.gdx.Screen provideSampleScreen(SampleGameScreen impl) {
         return impl;
     }
@@ -57,6 +66,9 @@ public abstract class SampleModule {
     }
 
     // Add new sample systems here:
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindInputSystem(InputSystem s) { return s; }
+
     @Provides @Singleton @IntoSet
     static EntitySystem bindBlockSpawnSystem(BlockSpawnSystem s) { return s; }
 
