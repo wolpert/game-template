@@ -1,8 +1,4 @@
-# Auto-merge Dependabot PRs for patch and minor version updates only.
-#
-# Major version bumps are intentionally NOT auto-merged — a human should review
-# breaking changes. Patch/minor updates are squash-merged automatically once all
-# required status checks pass.
+# Auto-merge every Dependabot PR once required status checks pass.
 #
 # Requires a repo branch-protection rule on `main` that requires the CI workflow
 # check (job `build` from .github/workflows/ci.yml) before merge — the `--auto`
@@ -20,19 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: Approve patch/minor PRs
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+      - name: Approve PR
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      - name: Enable auto-merge for patch/minor PRs
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+      - name: Enable auto-merge
         run: gh pr merge --auto --squash --delete-branch "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
