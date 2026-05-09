@@ -1,6 +1,7 @@
 package com.codeheadsystems.game.ecs.component;
 
 import com.badlogic.ashley.core.Component;
+import com.badlogic.gdx.utils.Pool;
 
 /**
  * Linear velocity in pixels-per-second, integrated by
@@ -10,7 +11,13 @@ import com.badlogic.ashley.core.Component;
  * entities that need physics use {@link BodyComponent} + the {@code PhysicsSystem} pipeline
  * instead. Velocity and Body together is undefined; pick one or the other.
  */
-public class VelocityComponent implements Component {
+public class VelocityComponent implements Component, Pool.Poolable {
     public float dx;
     public float dy;
+
+    @Override
+    public void reset() {
+        dx = 0f;
+        dy = 0f;
+    }
 }

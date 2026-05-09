@@ -40,11 +40,14 @@ class InputSystemTest {
     private static final float DT = 0.016f;
 
     private Input input;
+    private Graphics graphics;
+    private InputGate gate;
     private GameConfig config;
     private boolean inputActive;
     private World world;
     private Body body;
     private PositionComponent position;
+    private Entity player;
     private Engine engine;
 
     @BeforeAll
@@ -56,7 +59,7 @@ class InputSystemTest {
     @BeforeEach
     void setUp() {
         input = mock(Input.class);
-        Graphics graphics = mock(Graphics.class);
+        graphics = mock(Graphics.class);
         when(graphics.getWidth()).thenReturn(SCREEN_WIDTH);
 
         config = new GameConfig();
@@ -66,7 +69,7 @@ class InputSystemTest {
         config.physics.pixelsPerMeter = PPM;
 
         inputActive = true;
-        InputGate gate = () -> inputActive;
+        gate = () -> inputActive;
 
         world = new World(new Vector2(0f, 0f), true);
 
@@ -87,7 +90,7 @@ class InputSystemTest {
         BodyComponent bc = new BodyComponent();
         bc.body = body;
 
-        Entity player = new Entity();
+        player = new Entity();
         player.add(new InputComponent());
         player.add(position);
         player.add(texture);
@@ -96,6 +99,16 @@ class InputSystemTest {
         engine = new PooledEngine();
         engine.addSystem(new InputSystem(input, graphics, config, gate));
         engine.addEntity(player);
+    }
+
+    /** Replace the desktop-mode system with the Android (drag-anchor) variant. */
+    private void useAndroidMode() {
+        for (com.badlogic.ashley.core.EntitySystem s : engine.getSystems().toArray(com.badlogic.ashley.core.EntitySystem.class)) {
+            if (s instanceof InputSystem) {
+                engine.removeSystem(s);
+            }
+        }
+        engine.addSystem(new InputSystem(input, graphics, config, gate, /*useDragAnchor=*/ true));
     }
 
     @AfterEach
@@ -201,6 +214,76 @@ class InputSystemTest {
 
         assertEquals(MAX_X, position.x, 1e-3);
         assertEquals(0f, body.getLinearVelocity().x, 1e-3);
+    }
+
+    // -- Android drag-anchor mode --------------------------------------------------------------
+    // Regression suite for the "first touch teleports player" bug. On Android the first touch
+    // anchors to the current sprite position; only drag deltas move the player.
+
+    @Test
+    void androidFirstTouchDoesNotTeleport() {
+        // Player sits at x=400; finger lands at x=100 (≈sprite center 148). Pre-fix, the cursor-centered
+        // path would immediately drive left toward x=100. Drag-anchor mode must keep the sprite still on
+        // the first frame of contact (zero drag distance → zero target delta).
+        useAndroidMode();
+        placePlayerAt(400f);
+        when(input.isTouched()).thenReturn(true);
+        when(input.getX()).thenReturn(100);
+
+        engine.update(DT);
+
+        assertEquals(0f, body.getLinearVelocity().x, 1e-4);
+        assertEquals(400f, position.x, 1e-4);
+    }
+
+    @Test
+    void androidDragDeltaMovesPlayer() {
+        // Anchor on first tick, drag right 200 px on the second — sprite chases the drag delta.
+        useAndroidMode();
+        placePlayerAt(400f);
+        when(input.isTouched()).thenReturn(true);
+        when(input.getX()).thenReturn(100); // anchor frame
+        engine.update(DT);
+
+        when(input.getX()).thenReturn(300); // dragged +200 px
+        engine.update(DT);
+
+        // Sprite center was 448 at anchor → desired center now 648 → target bottom-left 600. 600 > 400 → move right.
+        assertEquals(SPEED_MPS, body.getLinearVelocity().x, 1e-4);
+    }
+
+    @Test
+    void androidDragDeltaMovesPlayerLeft() {
+        useAndroidMode();
+        placePlayerAt(400f);
+        when(input.isTouched()).thenReturn(true);
+        when(input.getX()).thenReturn(500); // anchor
+        engine.update(DT);
+
+        when(input.getX()).thenReturn(300); // dragged -200 px
+        engine.update(DT);
+
+        assertEquals(-SPEED_MPS, body.getLinearVelocity().x, 1e-4);
+    }
+
+    @Test
+    void androidAnchorClearsOnTouchUp() {
+        // Anchor → release → re-touch elsewhere should NOT teleport: a fresh anchor must be captured.
+        useAndroidMode();
+        placePlayerAt(400f);
+        when(input.isTouched()).thenReturn(true);
+        when(input.getX()).thenReturn(100);
+        engine.update(DT); // anchor at pointer=100, sprite center=448
+
+        when(input.isTouched()).thenReturn(false);
+        engine.update(DT); // release → clears anchor
+
+        when(input.isTouched()).thenReturn(true);
+        when(input.getX()).thenReturn(700); // far away — pre-clear this would have been treated as huge drag
+        engine.update(DT); // first tick of new gesture: anchors fresh, no movement
+
+        assertEquals(0f, body.getLinearVelocity().x, 1e-4);
+        assertEquals(400f, position.x, 1e-4);
     }
 
     private void placePlayerAt(float xPx) {

@@ -20,8 +20,11 @@ import javax.inject.Singleton;
 @Singleton
 public class LevelPickerScreen extends BaseScreen {
 
+    private final Provider<ScreenNavigator> navProvider;
+
     @Inject
     public LevelPickerScreen(Skin skin, Provider<ScreenNavigator> navProvider) {
+        this.navProvider = navProvider;
         // navProvider returns the @Singleton ScreenNavigator — safe to resolve once at
         // construction since the navigator's own Provider<Screen> deps stay lazy.
         ScreenNavigator nav = navProvider.get();
@@ -62,5 +65,10 @@ public class LevelPickerScreen extends BaseScreen {
         table.add(back).width(150).height(40).padTop(20).row();
 
         stage.addActor(table);
+    }
+
+    @Override
+    protected void onBack() {
+        navProvider.get().goToMainMenu();
     }
 }

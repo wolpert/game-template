@@ -1,6 +1,7 @@
 package com.codeheadsystems.game.ecs.component;
 
 import com.badlogic.ashley.core.Component;
+import com.badlogic.gdx.utils.Pool;
 
 /**
  * Marks an entity as horizontally looping: when its left edge passes the right edge of the screen
@@ -9,6 +10,11 @@ import com.badlogic.ashley.core.Component;
  * {@link TextureComponent} without coupling the wrap system to the texture loader, so the spawner
  * sets it explicitly.
  */
-public class WrapAroundComponent implements Component {
+public class WrapAroundComponent implements Component, Pool.Poolable {
     public float widthPx;
+
+    @Override
+    public void reset() {
+        widthPx = 0f;
+    }
 }

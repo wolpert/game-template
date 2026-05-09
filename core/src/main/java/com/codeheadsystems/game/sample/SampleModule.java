@@ -53,6 +53,9 @@ public abstract class SampleModule {
     @Provides @Singleton @IntoSet
     static EntitySystem bindDeathSystem(DeathSystem s) { return s; }
 
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindBlockCleanupSystem(BlockCleanupSystem s) { return s; }
+
     @Provides
     @ElementsIntoSet
     static Set<LoadableAsset> provideSampleAssets() {

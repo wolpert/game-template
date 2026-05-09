@@ -20,6 +20,7 @@ import javax.inject.Singleton;
 public class GameOverScreen extends BaseScreen {
 
     private final SessionResult result;
+    private final Provider<ScreenNavigator> nav;
     private final Label headlineLabel;
     private final Label detailLabel;
     private final TextButton tryAgain;
@@ -27,6 +28,7 @@ public class GameOverScreen extends BaseScreen {
     @Inject
     public GameOverScreen(Skin skin, Provider<ScreenNavigator> nav, SessionResult result) {
         this.result = result;
+        this.nav = nav;
 
         Table table = new Table();
         table.setFillParent(true);
@@ -66,5 +68,10 @@ public class GameOverScreen extends BaseScreen {
         detailLabel.setText(result.detail);
         tryAgain.setDisabled(!result.retryAvailable);
         tryAgain.setVisible(result.retryAvailable);
+    }
+
+    @Override
+    protected void onBack() {
+        nav.get().goToMainMenu();
     }
 }

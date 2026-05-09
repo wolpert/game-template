@@ -19,6 +19,7 @@ import javax.inject.Singleton;
 public class PreferencesScreen extends BaseScreen {
 
     private final UserPreferences prefs;
+    private final Provider<ScreenNavigator> nav;
     private final CheckBox sound;
     private final CheckBox music;
     private final CheckBox debugOverlay;
@@ -26,6 +27,7 @@ public class PreferencesScreen extends BaseScreen {
     @Inject
     public PreferencesScreen(Skin skin, UserPreferences prefs, Provider<ScreenNavigator> nav) {
         this.prefs = prefs;
+        this.nav = nav;
 
         Table table = new Table();
         table.setFillParent(true);
@@ -77,5 +79,10 @@ public class PreferencesScreen extends BaseScreen {
         sound.setChecked(prefs.isSoundEnabled());
         music.setChecked(prefs.isMusicEnabled());
         debugOverlay.setChecked(prefs.isDebugOverlayEnabled());
+    }
+
+    @Override
+    protected void onBack() {
+        nav.get().goToMainMenu();
     }
 }

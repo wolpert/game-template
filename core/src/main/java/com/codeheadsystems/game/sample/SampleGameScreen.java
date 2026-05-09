@@ -68,6 +68,8 @@ public class SampleGameScreen extends BaseScreen {
     private final GameContactListener contactListener;
 
     private final Label scoreLabel;
+    /** Reused across session restarts to avoid per-restart allocation. */
+    private final Array<Body> bodiesScratch = new Array<>();
 
     @Inject
     public SampleGameScreen(Engine engine,
@@ -112,11 +114,12 @@ public class SampleGameScreen extends BaseScreen {
     private void startNewSession() {
         // Tear down any prior session: entities first (so removal listeners run), then bodies.
         engine.removeAllEntities();
-        Array<Body> bodies = new Array<>();
-        world.getBodies(bodies);
-        for (Body b : bodies) {
+        bodiesScratch.clear();
+        world.getBodies(bodiesScratch);
+        for (Body b : bodiesScratch) {
             world.destroyBody(b);
         }
+        bodiesScratch.clear();
 
         state.reset();
         spawner.reset();
@@ -175,16 +178,16 @@ public class SampleGameScreen extends BaseScreen {
      * Box2D body, so no collision.
      */
     private Entity buildBackground() {
-        Entity entity = new Entity();
-        PositionComponent pos = new PositionComponent();
+        Entity entity = engine.createEntity();
+        PositionComponent pos = engine.createComponent(PositionComponent.class);
         pos.x = config.logo.x;
         pos.y = config.logo.y;
         pos.z = 0;
-        TextureComponent tex = new TextureComponent();
+        TextureComponent tex = engine.createComponent(TextureComponent.class);
         tex.region = new TextureRegion(logoTexture);
-        VelocityComponent vel = new VelocityComponent();
+        VelocityComponent vel = engine.createComponent(VelocityComponent.class);
         vel.dx = BACKGROUND_DRIFT_PX_PER_SEC;
-        WrapAroundComponent wrap = new WrapAroundComponent();
+        WrapAroundComponent wrap = engine.createComponent(WrapAroundComponent.class);
         wrap.widthPx = logoTexture.getWidth();
         entity.add(pos);
         entity.add(tex);
@@ -208,6 +211,7 @@ public class SampleGameScreen extends BaseScreen {
         float xPx = (screenW - spriteW) / 2f;
         float yPx = screenH * PLAYER_BOTTOM_MARGIN;
 
+        // Player is built once per session, not per spawn — local instances are fine here.
         BodyDef def = new BodyDef();
         def.type = BodyDef.BodyType.KinematicBody;
         def.position.set((xPx + spriteW / 2f) / ppm, (yPx + spriteH / 2f) / ppm);
@@ -218,23 +222,23 @@ public class SampleGameScreen extends BaseScreen {
         body.createFixture(shape, 0f);
         shape.dispose();
 
-        Entity entity = new Entity();
-        PositionComponent pos = new PositionComponent();
+        Entity entity = engine.createEntity();
+        PositionComponent pos = engine.createComponent(PositionComponent.class);
         pos.x = xPx;
         pos.y = yPx;
         pos.z = 1;
-        TextureComponent tex = new TextureComponent();
+        TextureComponent tex = engine.createComponent(TextureComponent.class);
         tex.region = firstFrame;
-        AnimationComponent anim = new AnimationComponent();
+        AnimationComponent anim = engine.createComponent(AnimationComponent.class);
         anim.animation = new Animation<>(PLAYER_FRAME_DURATION, frames, Animation.PlayMode.LOOP);
-        BodyComponent bc = new BodyComponent();
+        BodyComponent bc = engine.createComponent(BodyComponent.class);
         bc.body = body;
         entity.add(pos);
         entity.add(tex);
         entity.add(anim);
         entity.add(bc);
-        entity.add(new InputComponent());
-        entity.add(new PlayerComponent());
+        entity.add(engine.createComponent(InputComponent.class));
+        entity.add(engine.createComponent(PlayerComponent.class));
         body.setUserData(entity);
         return entity;
     }

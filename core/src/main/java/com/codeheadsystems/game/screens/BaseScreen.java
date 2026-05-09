@@ -1,6 +1,9 @@
 package com.codeheadsystems.game.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -10,14 +13,49 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
  * Common Scene2D scaffolding for menu-style screens. Subclasses build their UI in their constructor
  * (the {@link Stage} is allocated in the {@code @Inject} ctor of this base class), and may override
  * {@link #render(float)} for custom drawing on top of the stage.
+ *
+ * <p>BACK/ESCAPE handling is uniform: {@link #show()} installs an {@link InputMultiplexer} with the
+ * {@link Stage} first (so open Scene2D Dialogs can consume the press via their own key bindings)
+ * and a back-key {@link InputAdapter} second; it also calls
+ * {@code Gdx.input.setCatchKey(Input.Keys.BACK, true)} so Android doesn't bubble the gesture up to
+ * the OS and exit the app. Both {@link Input.Keys#BACK} and {@link Input.Keys#ESCAPE} route to
+ * {@link #onBack()}, which subclasses override to customize the destination (default: no-op so
+ * BaseScreen has zero Dagger dependencies; concrete scaffold screens override below).
  */
 public abstract class BaseScreen implements Screen {
 
     protected final Stage stage = new Stage(new ScreenViewport());
 
+    private final InputAdapter backKeyAdapter = new InputAdapter() {
+        @Override
+        public boolean keyDown(int keycode) {
+            if (keycode == Input.Keys.BACK || keycode == Input.Keys.ESCAPE) {
+                onBack();
+                return true;
+            }
+            return false;
+        }
+    };
+
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(stage);
+        // Catch BACK so Android doesn't deliver it as an app-exit. ESCAPE on desktop is delivered
+        // to the input processor regardless. Stage gets first crack so an open Scene2D Dialog
+        // (which binds its own ESCAPE/BACK keys) can consume the press before onBack() fires.
+        Gdx.input.setCatchKey(Input.Keys.BACK, true);
+        InputMultiplexer mux = new InputMultiplexer();
+        mux.addProcessor(stage);
+        mux.addProcessor(backKeyAdapter);
+        Gdx.input.setInputProcessor(mux);
+    }
+
+    /**
+     * Invoked when BACK (Android) or ESCAPE (desktop) is pressed while this screen is active.
+     * Default is a no-op so BaseScreen carries zero Dagger dependencies; concrete scaffold screens
+     * override to navigate (typically to the main menu) or to show a confirm-quit dialog.
+     */
+    protected void onBack() {
+        // no-op
     }
 
     @Override

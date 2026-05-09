@@ -1,8 +1,6 @@
 package com.codeheadsystems.game.screens;
 
 import com.badlogic.ashley.core.Engine;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -16,11 +14,11 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 
 /**
- * Minimal scaffold game screen — an empty placeholder with a hint label and ESC → main menu. The
- * dodge demo's playable screen lives at {@code com.codeheadsystems.game.sample.SampleGameScreen};
- * this class is intentionally empty so a new project starts from a clean slate. {@link #show()}
- * tears down any prior session (entities + Box2D bodies) so visiting the placeholder after the
- * sample doesn't leak simulation state.
+ * Minimal scaffold game screen — an empty placeholder with a hint label and BACK/ESC → main menu
+ * (routed through {@link BaseScreen#onBack()}). The dodge demo's playable screen lives at
+ * {@code com.codeheadsystems.game.sample.SampleGameScreen}; this class is intentionally empty so a
+ * new project starts from a clean slate. {@link #show()} tears down any prior session (entities +
+ * Box2D bodies) so visiting the placeholder after the sample doesn't leak simulation state.
  */
 @Singleton
 public class GameScreen extends BaseScreen {
@@ -68,10 +66,11 @@ public class GameScreen extends BaseScreen {
         stage.act(delta);
         stage.draw();
         debugOverlay.render(delta);
+    }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            nav.get().goToMainMenu();
-        }
+    @Override
+    protected void onBack() {
+        nav.get().goToMainMenu();
     }
 
     @Override
