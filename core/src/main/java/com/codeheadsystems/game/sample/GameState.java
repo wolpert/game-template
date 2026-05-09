@@ -1,16 +1,16 @@
-package com.codeheadsystems.game.session;
+package com.codeheadsystems.game.sample;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-/** Mutable per-session state — reset by {@link com.codeheadsystems.game.screens.GameScreen} on entry. */
+/** Mutable per-session state — reset by {@link SampleGameScreen} on entry. */
 @Singleton
 public class GameState {
 
     /**
      * Session lifecycle. PLAYING accepts input and spawns blocks; DYING is the in-between where
      * input/spawning are paused and the death animation runs to completion; GAME_OVER signals
-     * GameScreen to transition to the game-over screen.
+     * {@link SampleGameScreen} to transition to the game-over screen.
      */
     public enum Phase { PLAYING, DYING, GAME_OVER }
 

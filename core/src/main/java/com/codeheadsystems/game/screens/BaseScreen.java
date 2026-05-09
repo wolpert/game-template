@@ -11,7 +11,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
  * (the {@link Stage} is allocated in the {@code @Inject} ctor of this base class), and may override
  * {@link #render(float)} for custom drawing on top of the stage.
  */
-abstract class BaseScreen implements Screen {
+public abstract class BaseScreen implements Screen {
 
     protected final Stage stage = new Stage(new ScreenViewport());
 

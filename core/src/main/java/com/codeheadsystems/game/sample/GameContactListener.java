@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.session;
+package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
@@ -6,7 +6,6 @@ import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
 import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.Manifold;
-import com.codeheadsystems.game.ecs.component.BlockComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import javax.inject.Inject;
 import javax.inject.Singleton;

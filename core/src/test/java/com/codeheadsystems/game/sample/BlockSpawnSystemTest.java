@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.ecs.system;
+package com.codeheadsystems.game.sample;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -9,8 +9,6 @@ import static org.mockito.Mockito.when;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.PooledEngine;
-import com.codeheadsystems.game.session.FallingBlockFactory;
-import com.codeheadsystems.game.session.GameState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

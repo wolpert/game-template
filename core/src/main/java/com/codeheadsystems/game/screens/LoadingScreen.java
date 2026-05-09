@@ -6,8 +6,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.codeheadsystems.game.assets.Asset;
 import com.codeheadsystems.game.assets.AssetManifest;
+import com.codeheadsystems.game.assets.LoadableAsset;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -17,7 +18,8 @@ import javax.inject.Singleton;
  * {@link ProgressBar}. The transition out is gated on both the manager finishing AND a minimum
  * display time — instant loads otherwise flash by unreadably.
  *
- * <p>Asset queue is driven by the {@link Asset} enum; before queuing, each path is validated
+ * <p>Asset queue is driven by a multi-bound {@code Set<LoadableAsset>} (scaffold + sample
+ * enums contribute via Dagger {@code @ElementsIntoSet}); before queuing, each path is validated
  * against {@link AssetManifest} (the gradle-generated {@code assets.txt}) so a renamed or
  * deleted file fails fast with a precise error.
  *
@@ -33,6 +35,7 @@ public class LoadingScreen extends BaseScreen {
     private final Provider<ScreenNavigator> nav;
     private final AssetManager assets;
     private final AssetManifest manifest;
+    private final Set<LoadableAsset> loadables;
     private final ProgressBar progressBar;
     private final Label percentLabel;
     private float elapsed;
@@ -42,10 +45,12 @@ public class LoadingScreen extends BaseScreen {
     public LoadingScreen(Skin skin,
                          Provider<ScreenNavigator> nav,
                          AssetManager assets,
-                         AssetManifest manifest) {
+                         AssetManifest manifest,
+                         Set<LoadableAsset> loadables) {
         this.nav = nav;
         this.assets = assets;
         this.manifest = manifest;
+        this.loadables = loadables;
 
         progressBar = new ProgressBar(0f, 1f, 0.01f, false, skin);
         progressBar.setAnimateDuration(0.1f);
@@ -64,13 +69,13 @@ public class LoadingScreen extends BaseScreen {
         super.show();
         elapsed = 0f;
         if (!queued) {
-            for (Asset asset : Asset.values()) {
-                if (!manifest.contains(asset.path)) {
-                    throw new GdxRuntimeException("Asset " + asset + " path '" + asset.path
+            for (LoadableAsset asset : loadables) {
+                if (!manifest.contains(asset.path())) {
+                    throw new GdxRuntimeException("Asset " + asset + " path '" + asset.path()
                             + "' is not in " + AssetManifest.MANIFEST_PATH
                             + " — file is missing or the manifest is stale (re-run :core:processResources).");
                 }
-                assets.load(asset.path, asset.type);
+                assets.load(asset.path(), asset.type());
             }
             queued = true;
         }

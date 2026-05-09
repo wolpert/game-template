@@ -7,7 +7,8 @@ import dagger.Component;
 import javax.inject.Singleton;
 
 @Singleton
-@Component(modules = GameModule.class)
+// Remove SampleModule.class to ship without the dodge demo.
+@Component(modules = {CoreModule.class, com.codeheadsystems.game.sample.SampleModule.class})
 public interface GameComponent {
     void inject(TheGame game);
 

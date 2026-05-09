@@ -9,9 +9,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.codeheadsystems.game.prefs.UserPreferences;
-import com.codeheadsystems.game.session.GameState;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.function.Supplier;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -19,9 +19,10 @@ import javax.inject.Singleton;
  * Heads-up perf overlay. Toggle via the Debug Overlay checkbox in Preferences.
  *
  * <p>Reports FPS, frame-time min/avg/max over the last {@value #HISTORY} frames, live entity count,
- * Box2D body count, current {@link GameState.Phase}, and cumulative GC count from
- * {@link ManagementFactory}. Owns its own {@link Stage} so it draws on top of the game stage and
- * doesn't depend on whatever screen happens to be active.
+ * Box2D body count, a free-form extras line supplied by {@code extraLine.get()} (demo / sample
+ * modules can rebind this {@code Supplier<String>} to surface gameplay state), and cumulative GC
+ * count from {@code java.lang.management.ManagementFactory}. Owns its own {@link Stage} so it
+ * draws on top of the game stage and doesn't depend on whatever screen happens to be active.
  */
 @Singleton
 public class DebugOverlay {
@@ -31,7 +32,7 @@ public class DebugOverlay {
     private final UserPreferences prefs;
     private final Engine engine;
     private final World world;
-    private final GameState state;
+    private final Supplier<String> extraLine;
     private final Skin skin;
 
     private final float[] frameTimes = new float[HISTORY];
@@ -42,11 +43,11 @@ public class DebugOverlay {
     private Label label;
 
     @Inject
-    public DebugOverlay(UserPreferences prefs, Engine engine, World world, GameState state, Skin skin) {
+    public DebugOverlay(UserPreferences prefs, Engine engine, World world, Supplier<String> extraLine, Skin skin) {
         this.prefs = prefs;
         this.engine = engine;
         this.world = world;
-        this.state = state;
+        this.extraLine = extraLine;
         this.skin = skin;
     }
 
@@ -91,7 +92,7 @@ public class DebugOverlay {
                 min * 1000f, avg * 1000f, max * 1000f,
                 engine.getEntities().size(),
                 world.getBodyCount(),
-                state.phase,
+                extraLine.get(),
                 gcCount()));
 
         stage.act(delta);

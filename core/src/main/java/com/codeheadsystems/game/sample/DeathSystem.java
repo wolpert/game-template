@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.ecs.system;
+package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.ComponentMapper;
 import com.badlogic.ashley.core.Entity;
@@ -8,8 +8,7 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
-import com.codeheadsystems.game.ecs.component.PlayerComponent;
-import com.codeheadsystems.game.session.GameState;
+import com.codeheadsystems.game.ecs.system.AnimationSystem;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 

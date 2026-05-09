@@ -11,34 +11,52 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 
 /**
- * Stub level picker — single hardcoded level. Replace with a list backed by config or
- * a directory scan when there are real levels to pick from.
+ * Stub level picker — exposes the empty scaffold {@link GameScreen} unconditionally and offers
+ * the dodge demo via {@link ScreenNavigator#goToSampleGame()} only when it's wired into the
+ * Dagger graph (i.e. {@code SampleModule} is in {@code GameComponent.modules}). The "Dodge
+ * Sample" button hides cleanly when the sample is removed, so this screen never imports the
+ * {@code sample/} package.
  */
 @Singleton
 public class LevelPickerScreen extends BaseScreen {
 
     @Inject
-    public LevelPickerScreen(Skin skin, Provider<ScreenNavigator> nav) {
+    public LevelPickerScreen(Skin skin, Provider<ScreenNavigator> navProvider) {
+        // navProvider returns the @Singleton ScreenNavigator — safe to resolve once at
+        // construction since the navigator's own Provider<Screen> deps stay lazy.
+        ScreenNavigator nav = navProvider.get();
+
         Table table = new Table();
         table.setFillParent(true);
         table.defaults().pad(6).width(220).height(48);
 
         table.add(new Label("Choose Level", skin)).padBottom(20).row();
 
-        TextButton level1 = new TextButton("Level 1", skin);
-        level1.addListener(new ClickListener() {
+        TextButton emptyGame = new TextButton("Empty Game", skin);
+        emptyGame.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                nav.get().goToGame();
+                nav.goToGame();
             }
         });
-        table.add(level1).row();
+        table.add(emptyGame).row();
+
+        if (nav.hasSampleGame()) {
+            TextButton sample = new TextButton("Dodge Sample", skin);
+            sample.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    nav.goToSampleGame();
+                }
+            });
+            table.add(sample).row();
+        }
 
         TextButton back = new TextButton("Back", skin);
         back.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                nav.get().goToMainMenu();
+                nav.goToMainMenu();
             }
         });
         table.add(back).width(150).height(40).padTop(20).row();

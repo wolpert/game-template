@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.ecs.system;
+package com.codeheadsystems.game.sample;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -15,9 +15,8 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
-import com.codeheadsystems.game.ecs.component.PlayerComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
-import com.codeheadsystems.game.session.GameState;
+import com.codeheadsystems.game.ecs.system.AnimationSystem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

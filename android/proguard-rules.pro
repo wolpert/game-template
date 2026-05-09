@@ -28,7 +28,13 @@
 # BeanAccess.FIELD in ConfigLoader so that path never runs at runtime, but
 # R8 still needs to be told the missing references are intentional.
 -dontwarn java.beans.**
--keep class com.codeheadsystems.game.config.** { *; }
+# SnakeYAML reflectively populates the public fields of YAML POJOs; without
+# this rule, R8 strips them on release Android builds and configs deserialize
+# to zero-filled objects, crashing on first launch. The wildcard matches any
+# package whose path contains a `config` segment so the rule survives the
+# README's rename checklist. If you rename the package containing your YAML
+# POJOs to something that doesn't include `.config.`, update this pattern.
+-keep class **.config.** { *; }
 
 # Needed by the gdx-controllers official extension.
 -keep class com.badlogic.gdx.controllers.android.AndroidControllers

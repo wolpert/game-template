@@ -1,6 +1,7 @@
 package com.codeheadsystems.game.di;
 
 import com.badlogic.ashley.core.Engine;
+import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.PooledEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
@@ -9,45 +10,81 @@ import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Box2D;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.codeheadsystems.game.AppInfo;
 import com.codeheadsystems.game.assets.Asset;
+import com.codeheadsystems.game.assets.LoadableAsset;
 import com.codeheadsystems.game.config.ConfigLoader;
 import com.codeheadsystems.game.config.GameConfig;
+import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.ecs.system.AnimationSystem;
-import com.codeheadsystems.game.ecs.system.BlockSpawnSystem;
-import com.codeheadsystems.game.ecs.system.DeathSystem;
 import com.codeheadsystems.game.ecs.system.InputSystem;
 import com.codeheadsystems.game.ecs.system.MovementSystem;
 import com.codeheadsystems.game.ecs.system.PhysicsSystem;
 import com.codeheadsystems.game.ecs.system.RenderSystem;
 import com.codeheadsystems.game.ecs.system.WrapAroundSystem;
-import com.codeheadsystems.game.session.GameContactListener;
+import dagger.BindsOptionalOf;
 import dagger.Module;
 import dagger.Provides;
+import dagger.multibindings.ElementsIntoSet;
+import dagger.multibindings.IntoSet;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.EnumSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
 import javax.inject.Singleton;
 
 @Module
-public class GameModule {
+public abstract class CoreModule {
 
     private static final String GAME_CONFIG_PATH = "config/game.yaml";
-    private static final String PREFERENCES_NAME = "game-template";
+    private static final String PREFERENCES_NAME = AppInfo.NAME;
+
+    @BindsOptionalOf @Sample abstract InputGate optionalSampleInputGate();
+
+    @BindsOptionalOf @Sample abstract Supplier<String> optionalSampleDebugLine();
+
+    @BindsOptionalOf @Sample abstract com.badlogic.gdx.Screen optionalSampleScreen();
+
+    /**
+     * Default scaffold binding: input is always active. Demo / sample modules can rebind
+     * this via {@code @Sample}-qualified providers (consumed through the optional slot above)
+     * to a gameplay-state-aware impl (e.g. closed during DYING / GAME_OVER) so
+     * {@link com.codeheadsystems.game.ecs.system.InputSystem} stays free of demo-specific deps.
+     */
+    @Provides
+    @Singleton
+    static InputGate provideInputGate(@Sample Optional<InputGate> override) {
+        return override.orElse(() -> true);
+    }
+
+    /**
+     * Default scaffold binding for {@link com.codeheadsystems.game.debug.DebugOverlay}'s extras
+     * line — empty by default. Demo / sample modules can rebind this {@code Supplier<String>}
+     * via the {@code @Sample}-qualified optional slot to surface gameplay state without forcing
+     * a demo-specific dependency back into the scaffold overlay.
+     */
+    @Provides
+    @Singleton
+    static Supplier<String> provideDebugOverlayExtra(@Sample Optional<Supplier<String>> override) {
+        return override.orElseGet(() -> () -> "");
+    }
 
     @Provides
     @Singleton
-    SpriteBatch provideSpriteBatch() {
+    static SpriteBatch provideSpriteBatch() {
         return new SpriteBatch();
     }
 
     @Provides
     @Singleton
-    AssetManager provideAssetManager() {
+    static AssetManager provideAssetManager() {
         return new AssetManager();
     }
 
@@ -59,19 +96,8 @@ public class GameModule {
      */
     @Provides
     @Singleton
-    Texture provideLogoTexture(AssetManager assets) {
+    static Texture provideLogoTexture(AssetManager assets) {
         return assets.get(Asset.LOGO.path, Texture.class);
-    }
-
-    /**
-     * Lifecycle foot-gun: throws {@code GdxRuntimeException} if {@link AssetManager} hasn't yet
-     * finished loading {@link Asset#GAME_ATLAS}. See {@link #provideLogoTexture} — same {@code Provider}
-     * deferral applies.
-     */
-    @Provides
-    @Singleton
-    TextureAtlas provideTextureAtlas(AssetManager assets) {
-        return assets.get(Asset.GAME_ATLAS.path, TextureAtlas.class);
     }
 
     /**
@@ -82,7 +108,7 @@ public class GameModule {
      */
     @Provides
     @Singleton
-    Preferences providePreferences() {
+    static Preferences providePreferences() {
         return Gdx.app.getPreferences(PREFERENCES_NAME);
     }
 
@@ -93,7 +119,7 @@ public class GameModule {
      */
     @Provides
     @Singleton
-    Skin provideSkin() {
+    static Skin provideSkin() {
         return new Skin(Gdx.files.internal("ui/uiskin.json"));
     }
 
@@ -105,7 +131,7 @@ public class GameModule {
      */
     @Provides
     @Singleton
-    Input provideInput() {
+    static Input provideInput() {
         return Gdx.input;
     }
 
@@ -116,22 +142,20 @@ public class GameModule {
      */
     @Provides
     @Singleton
-    Graphics provideGraphics() {
+    static Graphics provideGraphics() {
         return Gdx.graphics;
     }
 
     @Provides
     @Singleton
-    World provideWorld(GameConfig config, GameContactListener listener) {
+    static World provideWorld(GameConfig config) {
         Box2D.init(); // idempotent; safer than relying on lazy native loading.
-        World world = new World(new Vector2(config.physics.gravity.x, config.physics.gravity.y), /*doSleep=*/ true);
-        world.setContactListener(listener);
-        return world;
+        return new World(new Vector2(config.physics.gravity.x, config.physics.gravity.y), /*doSleep=*/ true);
     }
 
     @Provides
     @Singleton
-    GameConfig provideGameConfig(ConfigLoader loader) {
+    static GameConfig provideGameConfig(ConfigLoader loader) {
         try (Reader reader = Gdx.files.internal(GAME_CONFIG_PATH).reader()) {
             return loader.load(GameConfig.class, reader);
         } catch (IOException e) {
@@ -139,25 +163,39 @@ public class GameModule {
         }
     }
 
+    // Add new scaffold systems here:
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindInputSystem(InputSystem s) { return s; }
+
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindPhysicsSystem(PhysicsSystem s) { return s; }
+
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindMovementSystem(MovementSystem s) { return s; }
+
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindWrapAroundSystem(WrapAroundSystem s) { return s; }
+
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindAnimationSystem(AnimationSystem s) { return s; }
+
+    @Provides @Singleton @IntoSet
+    static EntitySystem bindRenderSystem(RenderSystem s) { return s; }
+
     @Provides
     @Singleton
-    Engine provideEngine(InputSystem inputSystem,
-                         PhysicsSystem physicsSystem,
-                         MovementSystem movementSystem,
-                         WrapAroundSystem wrapAroundSystem,
-                         BlockSpawnSystem blockSpawnSystem,
-                         DeathSystem deathSystem,
-                         AnimationSystem animationSystem,
-                         RenderSystem renderSystem) {
+    static Engine provideEngine(Set<EntitySystem> systems) {
         Engine engine = new PooledEngine();
-        engine.addSystem(inputSystem);
-        engine.addSystem(physicsSystem);
-        engine.addSystem(movementSystem);
-        engine.addSystem(wrapAroundSystem);
-        engine.addSystem(blockSpawnSystem);
-        engine.addSystem(deathSystem);
-        engine.addSystem(animationSystem);
-        engine.addSystem(renderSystem);
+        for (EntitySystem s : systems) {
+            engine.addSystem(s);
+        }
         return engine;
+    }
+
+    // Scaffold's loadable assets — see Asset enum.
+    @Provides
+    @ElementsIntoSet
+    static Set<LoadableAsset> provideScaffoldAssets() {
+        return Set.copyOf(EnumSet.allOf(Asset.class));
     }
 }

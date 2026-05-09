@@ -18,11 +18,11 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.codeheadsystems.game.config.GameConfig;
+import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
-import com.codeheadsystems.game.session.GameState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +41,7 @@ class InputSystemTest {
 
     private Input input;
     private GameConfig config;
-    private GameState state;
+    private boolean inputActive;
     private World world;
     private Body body;
     private PositionComponent position;
@@ -65,7 +65,8 @@ class InputSystemTest {
         config.physics = new GameConfig.PhysicsConfig();
         config.physics.pixelsPerMeter = PPM;
 
-        state = new GameState();
+        inputActive = true;
+        InputGate gate = () -> inputActive;
 
         world = new World(new Vector2(0f, 0f), true);
 
@@ -93,7 +94,7 @@ class InputSystemTest {
         player.add(bc);
 
         engine = new PooledEngine();
-        engine.addSystem(new InputSystem(input, graphics, config, state));
+        engine.addSystem(new InputSystem(input, graphics, config, gate));
         engine.addEntity(player);
     }
 
@@ -174,10 +175,10 @@ class InputSystemTest {
     }
 
     @Test
-    void freezesBodyWhenNotPlaying() {
-        // DYING / GAME_OVER should ignore the cursor and zero velocity each tick.
-        state.phase = GameState.Phase.DYING;
-        body.setLinearVelocity(SPEED_MPS, 0f); // simulate mid-motion at the moment of death
+    void freezesBodyWhenInputGateClosed() {
+        // Gate-closed (e.g. DYING / GAME_OVER in the demo) should ignore the cursor and zero velocity each tick.
+        inputActive = false;
+        body.setLinearVelocity(SPEED_MPS, 0f); // simulate mid-motion at the moment the gate closes
         when(input.isTouched()).thenReturn(true);
         when(input.getX()).thenReturn(50);
 

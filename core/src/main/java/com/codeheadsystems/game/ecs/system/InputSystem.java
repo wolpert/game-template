@@ -8,11 +8,11 @@ import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.codeheadsystems.game.config.GameConfig;
+import com.codeheadsystems.game.ecs.InputGate;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.InputComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;
-import com.codeheadsystems.game.session.GameState;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -31,17 +31,17 @@ public class InputSystem extends IteratingSystem {
     private final ComponentMapper<BodyComponent> bodies = ComponentMapper.getFor(BodyComponent.class);
     private final Input input;
     private final Graphics graphics;
-    private final GameState state;
+    private final InputGate inputGate;
     private final float speedPx;
     private final float pixelsPerMeter;
 
     @Inject
-    public InputSystem(Input input, Graphics graphics, GameConfig config, GameState state) {
+    public InputSystem(Input input, Graphics graphics, GameConfig config, InputGate inputGate) {
         super(Family.all(InputComponent.class, BodyComponent.class,
                 PositionComponent.class, TextureComponent.class).get(), PRIORITY);
         this.input = input;
         this.graphics = graphics;
-        this.state = state;
+        this.inputGate = inputGate;
         this.speedPx = config.player.speed;
         this.pixelsPerMeter = config.physics.pixelsPerMeter;
     }
@@ -49,8 +49,10 @@ public class InputSystem extends IteratingSystem {
     @Override
     protected void processEntity(Entity entity, float deltaTime) {
         Body body = bodies.get(entity).body;
-        if (!state.isPlaying()) {
-            // Freeze input-driven entities during DYING / GAME_OVER so the death animation isn't dragged around.
+        if (!inputGate.isInputActive()) {
+            // Gate closed — freeze input-driven entities (e.g. during DYING / GAME_OVER in the demo) so
+            // they aren't dragged around by the cursor. Default scaffold binding returns true always;
+            // sample modules rebind to a gameplay-state-aware gate.
             body.setLinearVelocity(0f, 0f);
             return;
         }

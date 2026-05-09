@@ -45,7 +45,7 @@ After cloning, rename the project for your game:
 2. Change `extra["appName"] = "game-template"` in the root `build.gradle.kts` — this drives jar names and bundle identifiers.
 3. Update Android `namespace` and `applicationId` in `android/build.gradle.kts`, the `package` attribute in `android/AndroidManifest.xml`, and the `com.codeheadsystems.game/...AndroidLauncher` reference in the `android:run` task.
 4. Update the desktop `application.mainClass` in `lwjgl3/build.gradle.kts` (and the matching Construo `identifier` for macOS).
-5. Move the Java sources under `core/src/main/java/com/codeheadsystems/game/` (and the matching `lwjgl3` / `android` launcher packages) to your own package.
+5. Move the Java sources under `core/src/main/java/com/codeheadsystems/game/` (and the matching `lwjgl3` / `android` launcher packages) to your own package. The R8 keep rule in `android/proguard-rules.pro` matches any `**.config.**` package, so YAML POJOs continue to deserialize on release Android builds as long as their package still contains a `config` segment — if you rename the config package to something else, update that rule too.
 6. Replace launcher icons under `android/res/` and `lwjgl3/icons/`.
 7. Replace the sample game assets under `assets/`.
 8. Update this README's About section.
@@ -225,10 +225,12 @@ To add a new config type:
 
 SnakeYAML's bean-introspection path references `java.beans.*`, which
 doesn't exist on Android. We sidestep that with `-dontwarn java.beans.**`
-and a `-keep` rule on `com.codeheadsystems.game.config.**` in
+and a `-keep class **.config.** { *; }` rule in
 `android/proguard-rules.pro` (so R8 doesn't strip the reflectively
-populated fields). If you move config POJOs to a different package,
-update that keep rule to match.
+populated fields). The wildcard matches any package whose path contains
+a `config` segment, so the rule survives the rename checklist as long
+as your YAML POJOs still live in a `…config…` package. Moving them
+elsewhere means updating that keep rule to match.
 
 ### Tests
 

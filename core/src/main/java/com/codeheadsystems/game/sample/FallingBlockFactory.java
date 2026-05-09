@@ -1,4 +1,4 @@
-package com.codeheadsystems.game.session;
+package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.Graphics;
@@ -14,7 +14,6 @@ import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
 import com.codeheadsystems.game.config.GameConfig;
 import com.codeheadsystems.game.ecs.component.AnimationComponent;
-import com.codeheadsystems.game.ecs.component.BlockComponent;
 import com.codeheadsystems.game.ecs.component.BodyComponent;
 import com.codeheadsystems.game.ecs.component.PositionComponent;
 import com.codeheadsystems.game.ecs.component.TextureComponent;

@@ -1,8 +1,6 @@
-package com.codeheadsystems.game.ecs.system;
+package com.codeheadsystems.game.sample;
 
 import com.badlogic.ashley.core.EntitySystem;
-import com.codeheadsystems.game.session.FallingBlockFactory;
-import com.codeheadsystems.game.session.GameState;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 

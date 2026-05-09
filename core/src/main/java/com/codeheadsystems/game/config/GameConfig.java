@@ -1,6 +1,7 @@
 package com.codeheadsystems.game.config;
 
 public class GameConfig {
+    // Add new config sections here. Mirror the field name in assets/config/game.yaml.
     public String title;
     public LogoConfig logo;
     public PlayerConfig player;
