@@ -8,7 +8,7 @@ updates:
   - package-ecosystem: "gradle" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
-      interval: "daily" # Check for updates every day
+      interval: "weekly" # Check for updates every day
     ignore:
       # Pin AGP to the 8.x line. AGP 9.x is alpha and IntelliJ IDEA only
       # supports up to 9.0.0-alpha06 — bumping past that breaks IDE sync.
