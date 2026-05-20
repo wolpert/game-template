@@ -3,7 +3,7 @@
 projectVersion = "1.0.0"
 
 # libGDX + ECS
-gdx = "1.14.0"
+gdx = "1.14.1"
 ashley = "1.7.4"
 graalHelper = "2.0.1"
 
@@ -14,7 +14,7 @@ dagger = "2.59.2"
 snakeYaml = "2.6"
 
 # Test
-junit = "6.0.3"
+junit = "6.1.0"
 mockito = "5.23.0"
 
 # LWJGL constraint floor (avoid issues on Java 25+)
