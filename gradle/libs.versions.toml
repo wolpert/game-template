@@ -3,7 +3,7 @@
 projectVersion = "1.0.0"
 
 # libGDX + ECS
-gdx = "1.14.1"
+gdx = "1.14.2"
 ashley = "1.7.4"
 graalHelper = "2.0.1"
 
@@ -32,10 +32,10 @@ construo = "2.1.0"
 # foojay-resolver-convention is applied in settings.gradle.kts where the type-safe `libs` accessor
 # is not available. The version literal in settings.gradle.kts MUST be kept in sync with this entry.
 foojayResolver = "1.0.0"
-graalNative = "1.1.1"
+graalNative = "1.1.2"
 spotless = "8.6.0"
 errorprone = "5.1.0"
-errorproneCore = "2.49.0"
+errorproneCore = "2.50.0"
 
 [libraries]
 # libGDX core
