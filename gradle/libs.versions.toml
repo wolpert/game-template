@@ -8,13 +8,13 @@ ashley = "1.7.4"
 graalHelper = "2.0.1"
 
 # DI
-dagger = "2.59.2"
+dagger = "2.60"
 
 # Config / serialization
 snakeYaml = "2.6"
 
 # Test
-junit = "6.1.0"
+junit = "6.1.1"
 mockito = "5.23.0"
 
 # LWJGL constraint floor (avoid issues on Java 25+)
@@ -32,8 +32,8 @@ construo = "2.1.0"
 # foojay-resolver-convention is applied in settings.gradle.kts where the type-safe `libs` accessor
 # is not available. The version literal in settings.gradle.kts MUST be kept in sync with this entry.
 foojayResolver = "1.0.0"
-graalNative = "1.1.2"
-spotless = "8.7.0"
+graalNative = "1.1.3"
+spotless = "8.8.0"
 errorprone = "5.1.0"
 errorproneCore = "2.50.0"
 
