@@ -8,7 +8,7 @@ ashley = "1.7.4"
 graalHelper = "2.0.1"
 
 # DI
-dagger = "2.60"
+dagger = "2.60.1"
 
 # Config / serialization
 snakeYaml = "2.6"
