@@ -14,14 +14,14 @@ dagger = "2.60.1"
 snakeYaml = "2.6"
 
 # Test
-junit = "6.1.1"
+junit = "6.1.2"
 mockito = "5.23.0"
 
 # LWJGL constraint floor (avoid issues on Java 25+)
-lwjgl3 = "3.4.1"
+lwjgl3 = "3.4.2"
 
 # Android
-agp = "9.2.1"
+agp = "9.3.0"
 desugar = "2.1.5"
 androidCompileSdk = "36"
 androidTargetSdk = "35"
@@ -32,7 +32,7 @@ construo = "2.1.0"
 # foojay-resolver-convention is applied in settings.gradle.kts where the type-safe `libs` accessor
 # is not available. The version literal in settings.gradle.kts MUST be kept in sync with this entry.
 foojayResolver = "1.0.0"
-graalNative = "1.1.3"
+graalNative = "1.1.4"
 spotless = "8.8.0"
 errorprone = "5.1.0"
 errorproneCore = "2.50.0"
