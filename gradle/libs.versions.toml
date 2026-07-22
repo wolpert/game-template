@@ -28,11 +28,11 @@ androidTargetSdk = "35"
 androidMinSdk = "21"
 
 # Gradle plugins
-construo = "2.1.0"
+construo = "2.2.1"
 # foojay-resolver-convention is applied in settings.gradle.kts where the type-safe `libs` accessor
 # is not available. The version literal in settings.gradle.kts MUST be kept in sync with this entry.
 foojayResolver = "1.0.0"
-graalNative = "1.1.4"
+graalNative = "1.1.6"
 spotless = "8.8.0"
 errorprone = "5.1.0"
 errorproneCore = "2.50.0"
